@@ -4,9 +4,46 @@ import os.path
 from glob import glob
 from nco import Nco
 import calendar
+import tempfile
 
-def avg_anthro(p, workdir):
+def concat_ocean_OCS(p, out_dir):
+    """concatenate monthly ocean fluxes to a single file
+
+    ARGS:
+    p (str): full path to anthro root directory
+    out_dir (str): full path to directory in which to place the result
+    """
+    nco = Nco()
+    all_annual_files = sorted(glob(os.path.join(p, "COS*_monthly.nc")))
+    all_tmp_files = []
+    for this_annual_file in all_annual_files:
+        fd, tmp = tempfile.mkstemp(suffix='.nc')
+        this_year = os.path.basename(this_annual_file)[3:7]
+        nco.ncap2(input=this_annual_file,
+                  output=tmp,
+                  options=['-s year[tid]={}'.format(this_year)])
+        # rename variable 'tid' (timestep id) to 'month'
+        nco.ncrename(input=tmp,
+                     output=tmp,
+                     options=['-d tid,month'])
+        nco.ncrename(input=tmp,
+                     output=tmp,
+                     options=['-v mon,month'])
+
+        all_tmp_files.append(tmp)
+    outfile = os.path.join(out_dir, "ocean.nc")
+    print('concatenating ', all_tmp_files)
+    nco.ncecat(input=all_tmp_files,
+               output=outfile,
+               options=['-u year'])
+    print("created {}".format(outfile))
+    for this_tmp in all_tmp_files:
+        os.remove(this_tmp)
+
+def avg_anthro(p, out_dir):
     """average daily files of hourly [OCS] into monthly means
+
+    Creates a single netCDF file of monthly mean global [OCS]
 
     Anthro root directory should contain subdirectories labeled by
     year; each annual subdirectory should contain monthly
@@ -14,6 +51,7 @@ def avg_anthro(p, workdir):
 
     ARGS:
     p (str): full path to anthro root directory
+    out_dir (str): full path to directory in which to place the result
     """
     nco = Nco()
     annual_dirs = sorted(glob(os.path.join(p, "20[01]*")))
