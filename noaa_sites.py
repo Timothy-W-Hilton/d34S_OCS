@@ -2,23 +2,7 @@ import netCDF4
 import numpy as np
 import pandas as pd
 from stem_pytools.domain import find_nearest_stem_xy
-
-def get_lat_lon(netcdf_path):
-    """read lat and lon from a model data netCDF file
-
-    The lat and lon netCDF variables must be named "lat" and "lon".
-
-    ARGS:
-    netcdf_path (str): full path to the data file
-
-    RETURNS:
-    Two 2D numpy arrays of longitudes and latitudes for each model grid cell.
-    """
-    nc = netCDF4.Dataset(netcdf_path)
-    lat = nc.variables['lat'][:]
-    lon = nc.variables['lon'][:]
-    lat_grid, lon_grid = np.meshgrid(lat, lon)
-    return((lat_grid, lon_grid))
+from common import get_lat_lon
 
 def assign_grid_cell_to_sites(sites, lon_grid, lat_grid):
     """find the nearest model grid cell to a pandas DataFrame of NOAA locations
