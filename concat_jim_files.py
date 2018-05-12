@@ -55,8 +55,9 @@ def avg_anthro(p, out_dir):
     """
     nco = Nco()
     annual_dirs = sorted(glob(os.path.join(p, "20[01]*")))
-    all_monthly_files = []
+    all_annual_files = []
     for this_dir in annual_dirs:
+        all_monthly_files = []
         this_year = os.path.basename(this_dir)
         for this_month in np.arange(1, 13):
             this_wildcard = os.path.join(this_dir,
@@ -66,7 +67,7 @@ def avg_anthro(p, out_dir):
             files = sorted(glob(this_wildcard))
             # ignore incomplete months
             if len(files) == ndays:
-                new_fname = os.path.join(workdir,
+                new_fname = os.path.join(out_dir,
                                          "{}-{:02d}_anthro_avg.nc".format(
                                              this_year, this_month))
                 print('creating {}... '.format(new_fname), end='')
@@ -86,12 +87,20 @@ def avg_anthro(p, out_dir):
                          options=['-x -v time'])
                 print('done')
                 all_monthly_files.append(new_fname)
+        this_annual_file = os.path.join(out_dir, "anthro_{}.nc".format(this_year))
     nco.ncecat(input=all_monthly_files,
-               output=os.path.join(out_dir, "anthro.nc"),
+                   output=this_annual_file,
                options=['-u tstep'])
+        all_annual_files.append(this_annual_file)
+    # now concatenate annual files together
+    nco.ncecat(input=all_annual_files,
+               output=os.path.join(outdir, 'anthro.nc'),
+               options=['-u year'])
     print('created anthro.nc')
     print('removing individual monthly files')
     for this_file in all_monthly_files:
+        os.remove(this_file)
+    for this_file in all_annual_files:
         os.remove(this_file)
 
 if __name__ == "__main__":
@@ -100,6 +109,10 @@ if __name__ == "__main__":
     anthro_dir = os.path.join('/', 'global', 'cscratch1', 'sd',
                               'jstineci', 'seasonal_amplitude',
                               'anthro_flux_only')
+    ocean_dir = os.path.join('/', 'global', 'cscratch1', 'sd',
+                             'jstineci', 'seasonal_amplitude',
+                             'ocean_flux_only', 'out_monthly')
     out_dir = os.path.join('/', 'global', 'cscratch1', 'sd',
                           'twhilton', 'global_sandbox')
     avg_anthro(anthro_dir, out_dir)
+    #concat_ocean_OCS(ocean_dir, out_dir)
