@@ -88,9 +88,9 @@ def avg_anthro(p, out_dir):
                 print('done')
                 all_monthly_files.append(new_fname)
         this_annual_file = os.path.join(out_dir, "anthro_{}.nc".format(this_year))
-    nco.ncecat(input=all_monthly_files,
+        nco.ncecat(input=all_monthly_files,
                    output=this_annual_file,
-               options=['-u tstep'])
+                   options=['-u tstep'])
         all_annual_files.append(this_annual_file)
     # now concatenate annual files together
     nco.ncecat(input=all_annual_files,
