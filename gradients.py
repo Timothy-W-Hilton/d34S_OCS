@@ -9,6 +9,7 @@ def get_ocean_anomaly(infile='./ocean.nc'):
     OCS = OCS.reshape( 48, 144, 91, 47)
     OCS = np.rollaxis(OCS, 3, 1)
     OCS = np.rollaxis(OCS, 3, 2)
+    # subtract time-varying global spatial mean OCS to get anomalies
     OCS = OCS - np.apply_over_axes(np.nanmean, OCS, (1, 2, 3))
     nc.close()
     return(OCS)
@@ -18,6 +19,7 @@ def get_anthro_anomaly(infile='./anthro.nc'):
     """
     nc = netCDF4.Dataset(infile)
     OCS = nc.variables['COS'][...].squeeze()
+    # subtract time-varying global spatial mean OCS to get anomalies
     OCS = OCS - np.apply_over_axes(np.nanmean, OCS, (1, 2, 3))
     nc.close()
     return(OCS)

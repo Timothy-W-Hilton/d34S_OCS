@@ -1,3 +1,4 @@
+import numpy as np
 import matplotlib.pyplot as plt
 import gradients
 from noaa_sites import gather_sites_data
@@ -34,18 +35,21 @@ if __name__ == "__main__":
 
     for k, this_data in {'ocean': ocs_ocean, 'anthro':ocs_anthro}.items():
         plt.figure()
-        for this_site in ('MLO', ):
+        for this_site in pacific_gradient:   #('MLO', ):
             this_x, this_y = get_site_xy(this_site)
             # show S hemisphere sites with dashed lines, N hemisphere with solid
             if (all_sites[all_sites.Code == this_site].Latitude < 0.0).all():
                 linestyle='dashed'
             else:
                 linestyle='solid'
-            plt.plot(calc_34S_concentration(
+            mid_d34S = calc_34S_concentration(
                 ocs=this_data.data[:, 0, this_x, this_y],
-                permil_34S=9.0) * TO_PPT,
-                     linestyle=linestyle,
-                     label=this_site)
+                permil_34S=5.5) * TO_PPT
+            plt.errorbar(np.arange(mid_d34S.size),
+                         mid_d34S,
+                         yerr=0.0,
+                         linestyle=linestyle,
+                         label=this_site)
         plt.gca().set_title(r'{} $\delta$34S OCS anomaly (from global mean)'.format(k))
         plt.gca().set_xlabel('month')
         plt.gca().set_ylabel(r'$\delta$34S [OCS] (ppt)')
