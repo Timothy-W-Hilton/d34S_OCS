@@ -5,6 +5,23 @@ from noaa_sites import gather_sites_data
 
 TO_PPT = 1e12
 
+# uncertainty in the detection equipment
+instrument_uncert = 5
+
+# d34S fractionation values assumed in text of BSF proposal (pp 7-8)
+fractionation = {'ocean': 19,
+                 'anthro': 3,
+                 'plant': -5,
+                 'soil': -3,
+                 'oxidation': 8}
+# d34S fractionation uncertainty ranges assumed in text of BSF
+# proposal (pp 7-8)
+fractionation_uncert  = {'ocean': 0,
+                         'anthro': 2,
+                         'plant': 0,
+                         'soil': 1,
+                         'oxidation': 0}
+
 def get_site_xy(code):
     """return site info for one specified site
     """
@@ -44,10 +61,11 @@ if __name__ == "__main__":
                 linestyle='solid'
             mid_d34S = calc_34S_concentration(
                 ocs=this_data.data[:, 0, this_x, this_y],
-                permil_34S=5.5) * TO_PPT
+                permil_34S=fractionation[k]) * TO_PPT
             plt.errorbar(np.arange(mid_d34S.size),
                          mid_d34S,
-                         yerr=0.0,
+                         yerr=(fractionation_uncert[k] +
+                               instrument_uncert) / 1000.0,
                          linestyle=linestyle,
                          label=this_site)
         plt.gca().set_title(r'{} $\delta$34S OCS anomaly (from global mean)'.format(k))
