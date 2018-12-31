@@ -5,8 +5,36 @@ from noaa_sites import gather_sites_data
 
 TO_PPT = 1e12
 
+""" ocean adjustment factor
+
+        %             anthro ocean_COS ocean_CS2 ocean_DMS ocean_missing ocean_post ocean_total
+		2004  246.052   155.474   155.474   155.474       5.60375    2460.63     1085.17
+		2005  246.052   154.926   154.926   154.926       5.58844    2454.14        1082
+
+- as per 7 May 2018 email from Jim, these fluxes need to be scaled:
+
+		Check the weighting for the components -- should be 0.65x for
+        the Kettle OCS / CS2 / DMS, 75x for LUKAI, and 0.147x for
+        posterior_12month_kfl. I come up with 967 after applying that
+        scaling.
+
+- applying the scaling, the total is
+
+		0.65*(155.474 + 155.474 + 155.474) + (75 * 5.60375) + (0.147 * 2460.63)
+		= 1085
+
+- so, to estimate OCS concentrations for various ocean flux estimates use these scaling factors for the concentrations:
+  - Lennartz: (345 / 1085) = 0.31797235023041476
+  - Launois best guess: (813 / 1085) = 0.7493087557603687
+  - Launois high estimate: (3997 / 1085) = 3.6838709677419357
+"""
+# [OCS] scaling factors for low, medium, high ocean OCS fluxes
+ocean_flux = {'Lennartz': (345.0 / 1085.0),
+              'Launois_best': (813.0 / 1085.0),
+              'Launois_high': (3997.0 / 1085.0)}
+
 # uncertainty in the detection equipment
-instrument_uncert = 5
+instrument_uncert = 0.5
 
 # d34S fractionation values assumed in text of BSF proposal (pp 7-8)
 fractionation = {'ocean': 19,
