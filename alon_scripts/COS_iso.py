@@ -2,6 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 n_years = 10
 n_months = 12
@@ -33,9 +34,16 @@ for y in range(n_years): # years loop
         d34S[y, m] = ((COS34 / COS32) / R_ref - 1) * 1000  #calculate delta-34S
         COS[y, m] = COS32  # save the COS concetration for later
 
-    fig, ax = plt.subplots(2, 1)
-    ax[0].plot(range(1, n_months + 1), COS[y, :])
-    ax[0].set_title('[COS]')
-    ax[1].plot(range(1, n_months + 1), d34S[y, :])
-    ax[1].set_title('d34S')
-    fig.suptitle('year {:02d}'.format(y + 1))
+
+with PdfPages('multipage_pdf.pdf') as pdf:
+    for y in range(n_years): # years loop
+        fig, ax = plt.subplots(2, 1)
+        ax[0].plot(range(1, n_months + 1), COS[y, :])
+        ax[0].set_ylabel('[COS]')
+        ax[0].set_ylim(COS.min(), COS.max())
+        ax[1].plot(range(1, n_months + 1), d34S[y, :])
+        ax[1].set_ylabel('d34S')
+        ax[1].set_ylim(d34S.min(), d34S.max())
+        fig.suptitle('year {:02d}'.format(y + 1))
+        pdf.savefig()
+        plt.close()
