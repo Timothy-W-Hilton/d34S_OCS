@@ -35,6 +35,7 @@ def gather_sites_data():
 
     """
     anthro_data = '/global/cscratch1/sd/twhilton/global_sandbox/anthro.nc'
+    anthro_data = './anthro.nc'
     sites = pd.read_csv('./noaa_flask_sites.dat', sep='\t')
     lat_grid, lon_grid = get_lat_lon(anthro_data)
     sites = assign_grid_cell_to_sites(sites, lon_grid, lat_grid)
