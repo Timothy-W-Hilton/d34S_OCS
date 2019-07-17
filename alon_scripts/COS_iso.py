@@ -22,11 +22,14 @@ epsilon_U = -5 #assuming fractionation of -5 permil in uptake by plants
 R_P=R_ref*(8/1000+1)
 
 #assuming arbitrary production for each month (TWH: production is
-#oceans + anthro, I think)
+#oceans + anthro, I think.  Uptake balances production in this
+#example: that is, sum(PCCOS_32 equals sum(U_COS32))
 P_COS32 = np.array([50, 110, 130, 140, 150, 200, 250, 300, 250, 200, 150, 50])
 #assuming arbitrary uptake for each month (TWH: uptake is from plants)
 U_COS32 = np.array([25, 50, 60, 70, 100, 300, 500, 400, 200, 150, 100, 25])
-Dt = 0.1  # time step
+Dt = 0.1  # time step (TWH: increasing Dt increases the range of
+          # [COS32] across a year, but not the January or December
+          # values because production equals uptake across a year.
 
 P_COS34 = P_COS32 * R_P
 d34S = np.zeros((n_years, n_months))
