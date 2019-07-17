@@ -78,27 +78,31 @@ if __name__ == "__main__":
                     'ASC', 'HBA', 'NMB', 'CPT']
     indian_gradient = ['SEY', 'CRZ', 'SYO']
 
-    for k_ocean, ocean_scale_factor in ocean_flux.items():
-        for k_component, this_data in {'ocean': ocs_ocean * ocean_scale_factor,
-                                       'anthro':ocs_anthro}.items():
-            plt.figure()
-            for this_site in indian_gradient:   #('MLO', ):
-                this_x, this_y = get_site_xy(this_site)
-                # show S hemisphere sites with dashed lines, N hemisphere with solid
-                if (all_sites[all_sites.Code == this_site].Latitude < 0.0).all():
-                    linestyle='dashed'
-                else:
-                    linestyle='solid'
-                mid_d34S = calc_34S_concentration(
-                    ocs=this_data.data[:, 0, this_x, this_y],
-                    permil_34S=fractionation[k_component]) * TO_PPT
-                plt.errorbar(np.arange(mid_d34S.size),
-                             mid_d34S,
-                             yerr=(fractionation_uncert[k_component] +
-                                   instrument_uncert) / 1000.0,
-                             linestyle=linestyle,
-                             label=this_site)
-            plt.gca().set_title(r'{} {} $\delta$34S OCS anomaly (from global mean)'.format(k_ocean, k_component))
-            plt.gca().set_xlabel('month')
-            plt.gca().set_ylabel(r'$\delta$34S [OCS] (ppt)')
-            plt.legend()
+    plt.figure()
+    for k, this_ocean_flux in ocean_flux.items():
+        for this_site in pacific_gradient:  # ('CRZ', ):
+            this_x, this_y = get_site_xy(this_site)
+            # show S hemisphere sites with dashed lines, N hemisphere with solid
+            if (all_sites[all_sites.Code == this_site].Latitude < 0.0).all():
+                linestyle='dashed'
+            else:
+                linestyle='solid'
+            ocean_d34S = calc_34S_concentration(
+                ocs=ocs_ocean.data[:, 0, this_x, this_y],
+                permil_34S=fractionation['ocean']) * TO_PPT
+            anthro_d34S = calc_34S_concentration(
+                ocs=ocs_anthro.data[:, 0, this_x, this_y],
+                permil_34S=fractionation['anthro']) * TO_PPT
+            hi_ocean_flux_d34S = ocean_d34S * ocean_flux['Launois_high']
+            med_ocean_flux_d34S = ocean_d34S * ocean_flux['Launois_best']
+            low_ocean_flux_d34S = ocean_d34S * ocean_flux['Lennartz']
+            plt.errorbar(np.arange(med_ocean_flux_d34S.size),
+                         med_ocean_flux_d34S / anthro_d34S,
+                         yerr=np.array([low_ocean_flux_d34S / anthro_d34S,
+                                        hi_ocean_flux_d34S / anthro_d34S]),
+                         linestyle=linestyle,
+                         label=this_site)
+        plt.gca().set_title(r'ratio ocean:anthro $\delta$34S OCS anomaly (from global mean)')
+        plt.gca().set_xlabel('month')
+        plt.gca().set_ylabel(r'$\delta$34S [OCS] (ppt)')
+        plt.legend()
