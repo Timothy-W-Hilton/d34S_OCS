@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
-n_years = 10
+n_years = 20
 n_months = 12
 
 R_ref = 0.0422
@@ -15,10 +15,16 @@ COS34 = COS32*R_atm  # This is the amount of COS with 34S
 epsilon_U = -5 #assuming fractionation of -5 permil in uptake by plants
 #R_P = R_ref*(20/1000+1) # Assuming 20 permil for production from the ocean
 #R_P = R_ref*(3/1000+1) # Assuming 3 permil for anthropogenic production
-R_P=R_ref*(8/1000+1) # Assuming 8 permil for total production from both sources
- #assuming arbitrary production for each month
+
+# Assuming 8 permil for total production from both sources.  TWH: This line
+# rearranges the definition of isotope fraction (delta) to solve for
+# R_P.
+R_P=R_ref*(8/1000+1)
+
+#assuming arbitrary production for each month (TWH: production is
+#oceans + anthro, I think)
 P_COS32 = np.array([50, 110, 130, 140, 150, 200, 250, 300, 250, 200, 150, 50])
-#assuming arbitrary uptake for each mont
+#assuming arbitrary uptake for each month (TWH: uptake is from plants)
 U_COS32 = np.array([25, 50, 60, 70, 100, 300, 500, 400, 200, 150, 100, 25])
 Dt = 0.1  # time step
 
