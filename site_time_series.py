@@ -98,9 +98,9 @@ if __name__ == "__main__":
             med_ocean_flux_d34S = ocean_d34S * ocean_flux['Launois_best']
             low_ocean_flux_d34S = ocean_d34S * ocean_flux['Lennartz']
             plt.errorbar(np.arange(med_ocean_flux_d34S.size),
-                         med_ocean_flux_d34S / anthro_d34S,
+                         (med_ocean_flux_d34S / anthro_d34S).squeeze(),
                          yerr=np.array([low_ocean_flux_d34S / anthro_d34S,
-                                        hi_ocean_flux_d34S / anthro_d34S]),
+                                        hi_ocean_flux_d34S / anthro_d34S]).squeeze(),
                          linestyle=linestyle,
                          label=this_site)
         plt.gca().set_title(r'ratio ocean:anthro $\delta$34S OCS anomaly (from global mean)')
