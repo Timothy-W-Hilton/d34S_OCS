@@ -4,6 +4,7 @@ import gradients
 from noaa_sites import gather_sites_data
 
 TO_PPT = 1e12
+SFC_Z = 0  # Z level for the surface in [OCS] arrays
 
 """ ocean adjustment factor
 
@@ -88,10 +89,10 @@ if __name__ == "__main__":
             else:
                 linestyle='solid'
             ocean_d34S = calc_34S_concentration(
-                ocs=ocs_ocean.data[:, 0, this_x, this_y],
+                ocs=ocs_ocean.data[:, SFC_Z, this_x, this_y],
                 permil_34S=fractionation['ocean']) * TO_PPT
             anthro_d34S = calc_34S_concentration(
-                ocs=ocs_anthro.data[:, 0, this_x, this_y],
+                ocs=ocs_anthro.data[:, SFC_Z, this_x, this_y],
                 permil_34S=fractionation['anthro']) * TO_PPT
             hi_ocean_flux_d34S = ocean_d34S * ocean_flux['Launois_high']
             med_ocean_flux_d34S = ocean_d34S * ocean_flux['Launois_best']
