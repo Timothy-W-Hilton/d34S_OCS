@@ -6,11 +6,75 @@ from noaa_sites import gather_sites_data
 TO_PPT = 1e12
 SFC_Z = 0  # Z level for the surface in [OCS] arrays
 
+
+class ForwardS34Model(object):
+    """container for a model of 34-Sulfur fractionation
+    """
+    def __init__(self,
+                 production_ocean,
+                 production_anthro,
+                 uptake_plants=None,
+                 uptake_soil=None,
+                 R_ref=0.0422,
+                 d34S_0=3):
+        """populate fluxes and check that shapes match
+
+        ARGUMENTS:
+        production_ocean (array-like): ocean OCS-32 production
+        production_anthro (array-like): anthropogenic OCS-32 production
+        uptake_plants: (array-like): plant OCS-32 uptake
+        uptake_soil: (array-like): soil OCS-32 uptake
+        R_ref (float): isotope fraction for the reference gas
+        d34_S (float): initial (pre-spinup) delta 34S value
+
+        Axes for all input flux arrays are assumed to be (time, Z,
+        Longitude, Latitude)
+        """
+        self.production_ocean = production_ocean
+        self.production_anthro = production_anthro
+        self.uptake_plants = uptake_plants
+        self.uptake_soil = uptake_soil
+
+        self.domain_shape = self.production_ocean.shape  # initialize
+
+        self.R_ref = R_ref
+        self.d34S_0 = d34S_0
+
+        # put in zeros for production fluxes as placeholders
+        if self.uptake_plants is None:
+            self.uptake_plants = np.zeros(self.domain_shape)
+        if self.uptake_soil is None:
+            self.uptake_soil = np.zeros(self.domain_shape)
+
+        for this in [self.production_ocean,
+                     self.production_anthro,
+                     self.uptake_plants,
+                     self.uptake_soil]:
+            if not np.array_equiv(this.shape, self.domain_shape):
+                raise(ValueError('input flux shapes do not match'))
+
+        self.OCS32 = np.full(np.nan, self.domain_shape)
+        self.OCS34 = np.full(np.nan, self.domain_shape)
+
+    def init_model(self):
+        # TODO: start here next time
+        R_atm_val_0 = self.R_ref * self.d34S_0
+        self.R_atm = np.full(np.nan, self.domain_shape)
+
+    def run_forward(self):
+        """run model forward, calculating d34S for each time step
+        """
+        n_tsteps = self.production_ocean.shape[0]
+        for t in range(1, n_tsteps):
+
+
+
 def delta_to_R(delta, R_ref=0.0422):
     """convert a isotope delta value to an abundance ratio (R)
     """
     R = R_ref * ((delta / 1000.0) + 1.0)
     return(R)
+
 
 def epsilon_to_uptake_heavy(epsilon, R, U_light):
     """calculate uptake flux for heavy isotope
