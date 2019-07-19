@@ -6,6 +6,22 @@ from noaa_sites import gather_sites_data
 TO_PPT = 1e12
 SFC_Z = 0  # Z level for the surface in [OCS] arrays
 
+def delta_to_R(delta, R_ref=0.0422):
+    """convert a isotope delta value to an abundance ratio (R)
+    """
+    R = R_ref * ((delta / 1000.0) + 1.0)
+    return(R)
+
+def epsilon_to_uptake_heavy(epsilon, R, U_light):
+    """calculate uptake flux for heavy isotope
+
+    calculate uptake flux for heavy isotope from isotopic
+    fractionation epsilon, abundance ratio, uptake flux for light
+    isotope
+    """
+    U_heavy = U_light * (1.0 + (epsilon_U / 1000.0)) * R
+
+
 """ ocean adjustment factor
 
         %             anthro ocean_COS ocean_CS2 ocean_DMS ocean_missing ocean_post ocean_total
