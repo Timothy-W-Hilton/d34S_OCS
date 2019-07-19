@@ -19,6 +19,7 @@ def get_ocean_production(infile='./ocean.nc'):
             OCS[idx, ...] = OCS_y_m[y, m, ...]
             idx = idx + 1
     nc.close()
+    OCS = np.ma.masked_invalid(OCS)
     return(OCS)
 
 def get_ocean_anomaly(infile='./ocean.nc', OCS=None):
@@ -35,7 +36,6 @@ def get_ocean_anomaly(infile='./ocean.nc', OCS=None):
                                 category=RuntimeWarning,
                                 message="Mean of empty slice")
         OCS_anom = OCS - np.apply_over_axes(np.nanmean, OCS, (1, 2, 3))
-    import pdb; pdb.set_trace()
     return(OCS_anom)
 
 def get_anthro_production(infile='./anthro.nc'):
