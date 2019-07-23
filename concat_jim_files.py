@@ -6,6 +6,7 @@ from nco import Nco
 import calendar
 import tempfile
 
+
 def concat_ocean_OCS(p, out_dir):
     """concatenate monthly ocean fluxes to a single file
 
@@ -40,6 +41,7 @@ def concat_ocean_OCS(p, out_dir):
     for this_tmp in all_tmp_files:
         os.remove(this_tmp)
 
+
 def avg_anthro(p, out_dir):
     """average daily files of hourly [OCS] into monthly means
 
@@ -71,9 +73,9 @@ def avg_anthro(p, out_dir):
                                          "{}-{:02d}_anthro_avg.nc".format(
                                              this_year, this_month))
                 print('creating {}... '.format(new_fname), end='')
-                #average hourly data on time dimension
+                # average hourly data on time dimension
                 nco.nces(input=files, output=new_fname, options=['-d time,0'])
-                #add variables for year and month
+                # add variables for year and month
                 nco.ncap2(input=new_fname,
                           output=new_fname,
                           options=['-s year[time]={}'.format(this_year)])
@@ -87,12 +89,14 @@ def avg_anthro(p, out_dir):
                          options=['-x -v time'])
                 print('done')
                 all_monthly_files.append(new_fname)
-        this_annual_file = os.path.join(out_dir, "anthro_{}.nc".format(this_year))
+        this_annual_file = os.path.join(
+            out_dir, "anthro_{}.nc".format(this_year))
         nco.ncecat(input=all_monthly_files,
                    output=this_annual_file,
                    options=['-u tstep'])
         all_annual_files.append(this_annual_file)
     # now concatenate annual files together
+    outdir = '.'
     nco.ncecat(input=all_annual_files,
                output=os.path.join(outdir, 'anthro.nc'),
                options=['-u year'])
@@ -102,6 +106,7 @@ def avg_anthro(p, out_dir):
         os.remove(this_file)
     for this_file in all_annual_files:
         os.remove(this_file)
+
 
 if __name__ == "__main__":
     """
@@ -113,6 +118,6 @@ if __name__ == "__main__":
                              'jstineci', 'seasonal_amplitude',
                              'ocean_flux_only', 'out_monthly')
     out_dir = os.path.join('/', 'global', 'cscratch1', 'sd',
-                          'twhilton', 'global_sandbox')
+                           'twhilton', 'global_sandbox')
     avg_anthro(anthro_dir, out_dir)
-    #concat_ocean_OCS(ocean_dir, out_dir)
+    # concat_ocean_OCS(ocean_dir, out_dir)
