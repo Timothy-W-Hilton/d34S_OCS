@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import datetime
 import gradients
 from noaa_sites import gather_sites_data
 
@@ -15,17 +16,32 @@ class ForwardS34Model(object):
                  production_anthro,
                  uptake_plants=None,
                  uptake_soil=None,
+                 OCS32=500,
                  R_ref=0.0422,
-                 d34S_0=3):
+                 d34S_0=3,
+                 eps_anthro=3,
+                 eps_ocean=20,
+                 eps_plant=0,   # TODO replace with correct value
+                 eps_soil=0,    # TODO replace with correct value
+                 verbose=False):
         """populate fluxes and check that shapes match
 
         ARGUMENTS:
         production_ocean (array-like): ocean OCS-32 production
-        production_anthro (array-like): anthropogenic OCS-32 production
+        production_anthro (array-like): anthropogenic OCS-32
+           production
         uptake_plants: (array-like): plant OCS-32 uptake
         uptake_soil: (array-like): soil OCS-32 uptake
+        OCS32 (array-like): initial [OCS32]; default is 500 ppt
         R_ref (float): isotope fraction for the reference gas
-        d34_S (float): initial (pre-spinup) delta 34S value
+        d34S_0 (float): initial (pre-spinup) delta 34S value
+        eps_anthro (int): anthropogenic 34S production epsilon value
+           (per mil)
+        eps_ocean (int): ocean 34S production epsilon value (per mil)
+        eps_plant (int): plant 34S uptake epsilon value (per mil)
+        eps_soil (int): soil 34S uptake epsilon value (per mil)
+        verbose (logical): if True, print status updates during model
+           run.  Default is False
 
         Axes for all input flux arrays are assumed to be (time, Z,
         Longitude, Latitude)
@@ -37,8 +53,13 @@ class ForwardS34Model(object):
 
         self.domain_shape = self.production_ocean.shape  # initialize
 
+        self.eps_anthro = eps_anthro
+        self.eps_ocean = eps_ocean
+        self.eps_plant = eps_plant
+        self.eps_soil = eps_soil
         self.R_ref = R_ref
         self.d34S_0 = d34S_0
+        self.t = 0   # start at time zero
 
         # put in zeros for production fluxes as placeholders
         if self.uptake_plants is None:
@@ -53,20 +74,71 @@ class ForwardS34Model(object):
             if not np.array_equiv(this.shape, self.domain_shape):
                 raise(ValueError('input flux shapes do not match'))
 
-        self.OCS32 = np.full(np.nan, self.domain_shape)
-        self.OCS34 = np.full(np.nan, self.domain_shape)
+        self.R_atm = np.full(self.domain_shape, delta_to_R(d34S_0))
+        self.OCS32 = np.full(self.domain_shape, OCS32)
+        self.OCS34 = self.OCS32 * self.R_atm
+        self.d34S = np.full(self.domain_shape, np.nan)
+        self.d34S[0, ...] = self.d34S_0  # initialize time zero
 
-    def init_model(self):
-        # TODO: start here next time
-        R_atm_val_0 = self.R_ref * self.d34S_0
-        self.R_atm = np.full(np.nan, self.domain_shape)
+        self.R_P_ocean = delta_to_R(self.eps_ocean)
+        self.R_P_anthro = delta_to_R(self.eps_ocean)
+        # initialize ocean production
+        self.P_OCS34 = ((self.production_anthro * self.R_P_anthro) +
+                        (self.production_ocean * self.R_P_ocean))
 
-    def run_forward(self):
+        self.verbose = verbose
+
+    def run_forward(self, t_0=None, t_end=None):
         """run model forward, calculating d34S for each time step
-        """
-        n_tsteps = self.production_ocean.shape[0]
-        for t in range(1, n_tsteps):
 
+        ARGUMENTS:
+        t_0 (int): starting time step (default 0)
+        t_end (int): ending time step (default is length of time axis)
+        """
+        if self.verbose:
+            t0 = datetime.datetime.now()
+            print("==================================================")
+            print('starting forward model run ({})'.format(t0))
+        n_tsteps = self.production_ocean.shape[0]
+        if t_0 is not None:
+            self.t = t_0
+        if t_end is None:
+            t_end = n_tsteps
+        while self.t < t_end:
+            self.R_atm = self.OCS34 / self.OCS32
+            # TODO: maybe hold onto production, uptake values for debugging
+            U_OCS34_plants = (self.uptake_plants[self.t, ...] *
+                              (1.0 + (self.eps_anthro / 1000.0)) *
+                              self.R_atm[self.t])
+            U_OCS34_soil = (self.uptake_soil[self.t, ...] *
+                            (1.0 + (self.eps_soil / 1000.0)) *
+                            self.R_atm[self.t])
+            P_OCS34_anthro = (self.production_anthro[self.t, ...] *
+                              (1.0 + (self.eps_anthro / 1000.0)) *
+                              self.R_atm[self.t])
+            P_OCS34_ocean = (self.production_anthro[self.t, ...] *
+                             (1.0 + (self.eps_anthro / 1000.0)) *
+                             self.R_atm[self.t])
+            self.OCS32[self.t, ...] = (self.OCS32[self.t - 1, ...] +
+                                       self.production_anthro[self.t] +
+                                       self.production_ocean[self.t] -
+                                       self.uptake_plants[self.t] -
+                                       self.uptake_soil[self.t])
+            self.OCS34[self.t, ...] = (self.OCS34[self.t - 1, ...] +
+                                       P_OCS34_anthro +
+                                       P_OCS34_ocean -
+                                       U_OCS34_plants -
+                                       U_OCS34_soil)
+            self.d34S[self.t, ...] = (((self.OCS34[self.t, ...] /
+                                        self.OCS32[self.t, ...])
+                                       / self.R_ref) - 1) * 1000.0
+            self.t = self.t + 1
+            if self.verbose:
+                print("completed time {}".format(self.t))
+        if self.verbose:
+            print("==================================================")
+            print(' forward model run finished ({} s)'.format(
+                datetime.datetime.now() - t0))
 
 
 def delta_to_R(delta, R_ref=0.0422):
@@ -76,15 +148,16 @@ def delta_to_R(delta, R_ref=0.0422):
     return(R)
 
 
-def epsilon_to_uptake_heavy(epsilon, R, U_light):
-    """calculate uptake flux for heavy isotope
+def epsilon_to_uptake_heavy(epsilon, R, flux_light):
+    """calculate flux for heavy isotope
 
-    calculate uptake flux for heavy isotope from isotopic
-    fractionation epsilon, abundance ratio, uptake flux for light
+    calculate flux for heavy isotope from isotopic
+    fractionation epsilon, abundance ratio, flux for light
     isotope
     """
-    U_heavy = U_light * (1.0 + (epsilon_U / 1000.0)) * R
-    return(U_heavy)
+    # TODO: this function is unused - remove it?
+    flux_heavy = flux_light * (1.0 + (epsilon / 1000.0)) * R
+    return(flux_heavy)
 
 
 """ ocean adjustment factor
@@ -162,7 +235,8 @@ if __name__ == "__main__":
                          'ASC', 'HBA', 'NMB', 'CPT']
     indian_gradient = ['SEY', 'CRZ', 'SYO']
 
-    model = ForwardS34Model(ocs_ocean, ocs_anthro)
+    model = ForwardS34Model(ocs_ocean, ocs_anthro, verbose=True)
+    model.run_forward()
 
 
 
