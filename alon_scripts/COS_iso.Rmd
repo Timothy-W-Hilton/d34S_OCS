@@ -1,0 +1,89 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.1'
+      jupytext_version: 1.2.4
+  kernelspec:
+    display_name: Python [conda env:d34Shv]
+    language: python
+    name: conda-env-d34Shv-py
+---
+
+```{python}
+"""TWH port of Alon's Matlab script demo to python"""
+
+import numpy as np
+import xarray as xr
+import holoviews as hv
+
+hv.extension('bokeh')
+```
+
+```{python}
+n_years = 40
+n_months = 12
+
+R_ref = 0.0422
+R_atm = R_ref * (3 / 1000 + 1)  #lets start with atmospheric d34S of 3 permil, and later do a spin up.
+COS32 = 500 # This is the amount in the atmosphere. for simplicity I
+             # work here with concetrations in ppt instead of mass
+COS34 = COS32*R_atm  # This is the amount of COS with 34S
+epsilon_U = -5 #assuming fractionation of -5 permil in uptake by plants
+#R_P = R_ref*(20/1000+1) # Assuming 20 permil for production from the ocean
+#R_P = R_ref*(3/1000+1) # Assuming 3 permil for anthropogenic production
+
+# Assuming 8 permil for total production from both sources.  TWH: This line
+# rearranges the definition of isotope fraction (delta) to solve for
+# R_P.
+R_P=R_ref*(8/1000+1)
+
+#assuming arbitrary production for each month (TWH: production is
+#oceans + anthro, I think.  Uptake balances production in this
+#example: that is, sum(PCCOS_32 equals sum(U_COS32))
+P_COS32 = np.array([50, 110, 130, 140, 150, 200, 250, 300, 250, 200, 150, 50])
+#assuming arbitrary uptake for each month (TWH: uptake is from plants)
+U_COS32 = np.array([25, 50, 60, 70, 100, 300, 500, 400, 200, 150, 100, 25])
+Dt = 0.1  # time step (TWH: increasing Dt increases the range of
+          # [COS32] across a year, but not the January or December
+          # values because production equals uptake across a year.
+
+P_COS34 = P_COS32 * R_P
+d34S = np.zeros((n_years, n_months))
+COS = np.zeros((n_years, n_months))
+for y in range(n_years): # years loop
+    for m in range(n_months): # months loop
+        R_atm = COS34 / COS32
+        U_COS34 = U_COS32[m] * (1 + epsilon_U / 1000) * R_atm
+        COS32 = COS32 + P_COS32[m] * Dt - U_COS32[m] * Dt  # COS 32 iteration
+        COS34 = COS34 + P_COS34[m] * Dt - U_COS34 * Dt  # COS 34 iteration
+        d34S[y, m] = ((COS34 / COS32) / R_ref - 1) * 1000  #calculate delta-34S
+        COS[y, m] = COS32  # save the COS concetration for later
+```
+
+prove that COS 32 production and uptake equal out across a year
+
+```{python}
+print('total annual COS32 production: ', np.sum(P_COS32))
+print('total annual COS32 uptake: ', np.sum(U_COS32))
+```
+
+```{python}
+year_dim = hv.Dimension('year', label='Year')
+month_dim = hv.Dimension('month', label='Month', values=np.arange(n_months))
+COS_dim = hv.Dimension('COS', label='COS', unit='ppt')
+d34S_dim = hv.Dimension('d34S', label='d34S', unit='delta 34S')
+COSxr = xr.Dataset({'COS': (['year', 'month'], COS),
+                   'd34S': (['year', 'month'], d34S)},
+                   coords={'year': (('year'), np.arange(n_years)),
+                           'month': (('month'), np.arange(n_months))})
+COSds = hv.Dataset(COSxr, kdims=[year_dim, month_dim], vdims=[COS_dim, d34S_dim])
+```
+
+```{python}
+cv_COS = COSds.to(hv.Curve, kdims=['month'], vdims=COS_dim).opts(width=600)
+cv_d34S = COSds.to(hv.Curve, kdims=['month'], vdims=d34S_dim).opts(width=600)
+hv.Layout([cv_COS, cv_d34S]).cols(1)
+```
