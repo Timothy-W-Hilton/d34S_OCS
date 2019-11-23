@@ -1,0 +1,32 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.1'
+      jupytext_version: 1.2.4
+  kernelspec:
+    display_name: d34Shv
+    language: python
+    name: d34shv
+---
+
+```{python}
+import toy_problem
+import holoviews as hv
+import geoviews as gv
+import geoviews.feature as gf
+```
+
+```{python}
+hv.extension('bokeh')
+```
+
+```{python}
+foo = toy_problem.parse_kettle_flux('/Users/tim/work/Data/kettle_fluxes/ocean_cos.dat')
+```
+
+```{python}
+gv.Dataset(foo).to(gv.QuadMesh, kdims=['lon', 'lat']) * gf.coastline
+```
