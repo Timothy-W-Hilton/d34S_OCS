@@ -13,7 +13,7 @@ jupyter:
 ---
 
 ```{python}
-import toy_problem
+import toy_problem as TP
 import holoviews as hv
 import geoviews as gv
 import geoviews.feature as gf
@@ -24,9 +24,11 @@ hv.extension('bokeh')
 ```
 
 ```{python}
-foo = toy_problem.parse_kettle_flux('/Users/tim/work/Data/kettle_fluxes/ocean_cos.dat')
+da_of, ocean_flux, ocean_flux_KG, anthro_conc, ocean_conc, plant_conc = TP.main()
 ```
 
 ```{python}
-gv.Dataset(foo).to(gv.QuadMesh, kdims=['lon', 'lat']) * gf.coastline
+OFKG = gv.Dataset(ocean_flux_KG).to(gv.QuadMesh, kdims=['lon', 'lat']) * gf.coastline
+OF = gv.Dataset(da_of).to(gv.QuadMesh, kdims=['lon', 'lat']) * gf.coastline
+OFKG + OF
 ```

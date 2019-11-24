@@ -4,6 +4,7 @@ import numpy as np
 import re
 import os
 import fortranformat
+import idwnn_kdtree_interp as interp
 
 def parse_kettle_flux(fname):
     f = open(fname, 'r')
@@ -31,32 +32,27 @@ def parse_kettle_flux(fname):
     return(ds)
 
 
-def latlon_string_2_num(s):
+def regrid_fcos(fcos, new_lon, new_lat):
     """
-    parse Kettle longitude, latitude coordinate strings to numeric arrays
+    Regrid Kettle plant COS flux to new latitude, longiutde
 
-    Kettle provides lon and lat as strings in the format "-179.5-89.5"
-    -- two decimal coordinates preceded by a minus sign (W longitude
-    or S latitude) or space (E longitude or N latitude).
+    INPUT PARAMETERS
+    fcos; pandas DataFrame: the Kettle plant fluxes.  This would
+        generally be the output of parse_kettle_plant_flux
+    fname_STEM_coords; string: full path to STEM topo file
     """
-    #regular expression to match the latitude and longitude strings
-    latlon_re = r'([- ]*\d+\.\d+)'
-    lon, lat = re.findall(latlon_re, s)
-    return(float(lon), float(lat))
+    old_lon, old_lat = np.meshgrid(fcos['lon'].values,
+                                   fcos['lat'].values)
+    fcos_regridded = interp.spherical_idw_kdtree_interp(
+        old_lon, old_lat,
+        new_lon, new_lat,
+        data=np.moveaxis(fcos.data, 2, 0),
+        n_nbr=1)
+    return(fcos_regridded)
 
 
-def parse_kettle_plant_flux(fname):
-    fcos = pd.read_csv(fname, header=8)
-    lonlat = fcos.MAX.apply(latlon_string_2_num)
-    #lonlat is a pandas series of tuples.  convert to a data frame and
-    #concatenate it to fcos
-    lonlat = pd.DataFrame(lonlat.tolist(),
-                          columns=['lon', 'lat'])
-    fcos = pd.concat((fcos, lonlat), axis=1)
+def main():
 
-    return(fcos)
-
-if __name__ == "__main__":
 
     global_conc_dir = os.path.join('/', 'Users', 'tim', 'work',
                                    'Data', 'Jim_global')
@@ -66,5 +62,25 @@ if __name__ == "__main__":
         combine='nested') for this_dir in ['ocean_only', 'plant_only'])
     anthro_conc = xr.open_dataset(os.path.join(global_conc_dir, 'anthro.nc'))
 
-    foo = parse_kettle_flux('/Users/tim/work/Data/kettle_fluxes/ocean_cos.dat')
-    #kettle_focean = parse_kettle_plant_flux('/Users/tim/work/Data/kettle_fluxes/ocean_cos.dat')
+    ocean_flux_kettle_grid = parse_kettle_flux(
+        os.path.join('/', 'Users', 'tim', 'work', 'Data',
+                     'kettle_fluxes', 'ocean_cos.dat'))
+    grid_lon, grid_lat = np.meshgrid(ocean_conc['longitude'].values[0, ...],
+                                     ocean_conc['latitude'].values[0, ...])
+    ocean_flux = regrid_fcos(ocean_flux_kettle_grid, grid_lon, grid_lat)
+
+    da_of = xr.DataArray(ocean_flux,
+                         coords={'month': range(12),
+                                 'lon': ocean_conc.longitude.values[0, :],
+                                 'lat': ocean_conc.latitude.values[0, :]},
+                         dims=['month', 'lat', 'lon'],
+                         name='ocean_flux')
+
+    return(da_of, ocean_flux, ocean_flux_kettle_grid,
+           anthro_conc, ocean_conc, plant_conc)
+
+
+if __name__ == "__main__":
+
+    (da_of, ocean_flux, ocean_flux_kettle_grid,
+     anthro_conc, ocean_conc, plant_conc) = main()
