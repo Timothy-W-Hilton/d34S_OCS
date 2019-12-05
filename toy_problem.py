@@ -51,7 +51,7 @@ def regrid_fcos(fcos, new_lon, new_lat):
     return(fcos_regridded)
 
 
-def format_dataset(this_dataset):
+def format_GEOSChem_dataset(this_dataset):
     """promote longitude, latitude, lev from variable to coordinate
     variable; create a new coordinate variable tstep
     """
@@ -71,8 +71,8 @@ def main():
         os.path.join(global_conc_dir, this_dir, 'out_monthly', '*.nc'),
         concat_dim='tid',
         combine='nested') for this_dir in ['ocean_only', 'plant_only'])
-    ocean_conc = format_dataset(ocean_conc)
-    plant_conc = format_dataset(plant_conc)
+    ocean_conc = format_GEOSChem_dataset(ocean_conc)
+    plant_conc = format_GEOSChem_dataset(plant_conc)
 
     anthro_conc = xr.open_dataset(os.path.join(global_conc_dir, 'anthro.nc'))
     # remove singleton dimemsion time.  the timestamp is still present
