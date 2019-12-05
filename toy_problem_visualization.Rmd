@@ -41,23 +41,7 @@ if draw_plots:
 ```
 
 ```{python}
-anthro_conc #['COS'] #.sel(lev=1, time=0)
-```
-
-```{python}
-
-```
-
-```{python}
-anthro_conc = anthro_conc.assign_coords(tstep=range(anthro_conc.dims['tstep']))
-```
-
-```{python}
-anthro_conc['COS'].sel(lev=1)
-```
-
-```{python}
-qm_anthro = gv.Dataset(anthro_conc['COS'].sel(lev=1), kdims=['lon', 'lat', 'tstep']).to(gv.QuadMesh, kdims=['lon', 'lat'])
+qm_anthro = gv.Dataset(anthro_conc['COS'].sel(lev=1)).to(gv.QuadMesh, kdims=['lon', 'lat'])
 if draw_plots:
     qm_anthro
 ```
