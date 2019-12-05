@@ -24,11 +24,40 @@ hv.extension('bokeh')
 ```
 
 ```{python}
+draw_plots = False
+```
+
+```{python}
 da_of, ocean_flux, ocean_flux_KG, anthro_conc, ocean_conc, plant_conc = TP.main()
 ```
 
 ```{python}
+# ocean fluxes, Kettle grid
 OFKG = gv.Dataset(ocean_flux_KG).to(gv.QuadMesh, kdims=['lon', 'lat']) * gf.coastline
+# ocean fluxes, regridded to match Jim's GEOS-Chem run
 OF = gv.Dataset(da_of).to(gv.QuadMesh, kdims=['lon', 'lat']) * gf.coastline
-OFKG + OF
+if draw_plots:
+    OFKG + OF
+```
+
+```{python}
+anthro_conc #['COS'] #.sel(lev=1, time=0)
+```
+
+```{python}
+
+```
+
+```{python}
+anthro_conc = anthro_conc.assign_coords(tstep=range(anthro_conc.dims['tstep']))
+```
+
+```{python}
+anthro_conc['COS'].sel(lev=1)
+```
+
+```{python}
+qm_anthro = gv.Dataset(anthro_conc['COS'].sel(lev=1), kdims=['lon', 'lat', 'tstep']).to(gv.QuadMesh, kdims=['lon', 'lat'])
+if draw_plots:
+    qm_anthro
 ```

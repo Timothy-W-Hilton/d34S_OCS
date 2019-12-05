@@ -61,6 +61,12 @@ def main():
         concat_dim='tid',
         combine='nested') for this_dir in ['ocean_only', 'plant_only'])
     anthro_conc = xr.open_dataset(os.path.join(global_conc_dir, 'anthro.nc'))
+    # remove singleton dimemsion time.  the timestamp is still present
+    # in tstep
+    anthro_conc = anthro_conc.sel(time=0.0).drop('time')
+    # make tstep a coordinate
+    anthro_conc = anthro_conc.assign_coords(
+        tstep=range(anthro_conc.dims['tstep']))
 
     ocean_flux_kettle_grid = parse_kettle_flux(
         os.path.join('/', 'Users', 'tim', 'work', 'Data',
