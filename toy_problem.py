@@ -6,6 +6,8 @@ import os
 import fortranformat
 import idwnn_kdtree_interp as interp
 
+from holoviews.operation.datashader import regrid
+
 def parse_kettle_flux(fname):
     f = open(fname, 'r')
     found_format = False
@@ -51,6 +53,23 @@ def regrid_fcos(fcos, new_lon, new_lat):
     return(fcos_regridded)
 
 
+def get_kettle_data(data_array_name, fname, lon, lat):
+    """parse & regrid Kettle flux data and place into xarray.DataArray
+    """
+    flux_kettle_grid = parse_kettle_flux(
+        os.path.join('/', 'Users', 'tim', 'work', 'Data',
+                     'kettle_fluxes', fname))
+    grid_lon, grid_lat = np.meshgrid(lon, lat)
+    flux_geoschem_grid = regrid_fcos(flux_kettle_grid, grid_lon, grid_lat)
+    flux_da = xr.DataArray(flux_geoschem_grid,
+                           coords={'month': range(12),
+                                   'longitude': lon,
+                                   'latitude': lat},
+                           dims=['month', 'latitude', 'longitude'],
+                           name=data_array_name)
+    return(flux_da)
+
+
 def format_GEOSChem_dataset(this_dataset):
     """promote longitude, latitude, lev from variable to coordinate
     variable; create a new coordinate variable tstep
@@ -63,6 +82,30 @@ def format_GEOSChem_dataset(this_dataset):
                           data=range(this_dataset.dims['tid'])))
     return(this_dataset)
 
+
+def get_andrew_antho_cos(new_lon1d, new_lat1d):
+    fname = '/Users/tim/work/Data/Anthro_COS/Total_Anth._COS1980-2012_v3.nc'
+    anth_ocs_high_res = xr.open_dataset(fname)
+    anth_ocs_high_res = anth_ocs_high_res.rename({'ul_longitude': 'lon',
+                                                  'ul_latitude': 'lat'})
+    anth_ocs_high_res = anth_ocs_high_res.rename(
+        {'Total_Anth._COS': 'anthro_flux',
+         'lon': 'longitude',
+         'lat': 'latitude'})
+    anth_ocs_high_res = anth_ocs_high_res.assign_coords(
+        longitude=anth_ocs_high_res.longitude,
+        latitude=anth_ocs_high_res.latitude,
+        years=anth_ocs_high_res.latitude)
+
+    # old_lon, old_lat = np.meshgrid(anth_ocs_high_res['lon'].values,
+    #                                anth_ocs_high_res['lat'].values)
+    # new_lon, new_lat = np.meshgrid(new_lon1d, new_lat1d)
+    # anth_geoschem_grid = interp.spherical_idw_kdtree_interp(
+    #     old_lon, old_lat,
+    #     new_lon, new_lat,
+    #     data=anth_ocs_high_res['Total_Anth._COS'].data[-1, ...],
+    #     n_nbr=3)
+    return(anth_ocs_high_res) # , anth_geoschem_grid)  #
 
 def main():
     global_conc_dir = os.path.join('/', 'Users', 'tim', 'work',
@@ -84,25 +127,17 @@ def main():
     anthro_conc.rename({'lat': 'latitude',
                         'lon': 'longitude'})
 
-    ocean_flux_kettle_grid = parse_kettle_flux(
-        os.path.join('/', 'Users', 'tim', 'work', 'Data',
-                     'kettle_fluxes', 'ocean_cos.dat'))
-    grid_lon, grid_lat = np.meshgrid(ocean_conc['longitude'].values,
-                                     ocean_conc['latitude'].values)
-    ocean_flux = regrid_fcos(ocean_flux_kettle_grid, grid_lon, grid_lat)
-
-    da_of = xr.DataArray(ocean_flux,
-                         coords={'month': range(12),
-                                 'longitude': ocean_conc.longitude.values,
-                                 'latitude': ocean_conc.latitude.values},
-                         dims=['month', 'latitude', 'longitude'],
-                         name='ocean_flux')
-
-    return(da_of, ocean_flux, ocean_flux_kettle_grid,
-           anthro_conc, ocean_conc, plant_conc)
+    da_of = get_kettle_data('ocean_flux',
+                            'ocean_cos.dat',
+                            ocean_conc['longitude'].values,
+                            ocean_conc['latitude'].values)
+    return(da_of, anthro_conc, ocean_conc, plant_conc)
 
 
 if __name__ == "__main__":
 
-    (da_of, ocean_flux, ocean_flux_kettle_grid,
-     anthro_conc, ocean_conc, plant_conc) = main()
+    (da_of, anthro_conc, ocean_conc, plant_conc) = main()
+
+    anth_highres = get_andrew_antho_cos(
+        ocean_conc['longitude'].values,
+        ocean_conc['latitude'].values)

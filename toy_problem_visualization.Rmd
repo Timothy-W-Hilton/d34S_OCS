@@ -17,6 +17,12 @@ import toy_problem as TP
 import holoviews as hv
 import geoviews as gv
 import geoviews.feature as gf
+
+import xarray as xr  # want this in toy_problem.py eventuall
+import hvplot.xarray
+
+import xesmf as xe
+from geoviews.operation.regrid import weighted_regrid
 ```
 
 ```{python}
@@ -28,20 +34,75 @@ draw_plots = False
 ```
 
 ```{python}
-da_of, ocean_flux, ocean_flux_KG, anthro_conc, ocean_conc, plant_conc = TP.main()
+da_of, anthro_conc, ocean_conc, plant_conc = TP.main()
 ```
 
 ```{python}
 # ocean fluxes, Kettle grid
-OFKG = gv.Dataset(ocean_flux_KG).to(gv.QuadMesh, kdims=['lon', 'lat']) * gf.coastline
+# OFKG = gv.Dataset(ocean_flux_KG).to(gv.QuadMesh, kdims=['lon', 'lat']) * gf.coastline
 # ocean fluxes, regridded to match Jim's GEOS-Chem run
-OF = gv.Dataset(da_of).to(gv.QuadMesh, kdims=['lon', 'lat']) * gf.coastline
+OF = gv.Dataset(da_of).to(gv.QuadMesh, kdims=['longitude', 'latitude']) * gf.coastline
 if draw_plots:
-    OFKG + OF
+    OF #+ OFKG
 ```
 
 ```{python}
 qm_anthro = gv.Dataset(anthro_conc['COS'].sel(lev=1)).to(gv.QuadMesh, kdims=['lon', 'lat'])
 if draw_plots:
     qm_anthro
+```
+
+```{python}
+anthro_conc['COS'].sel(lev=1).hvplot.quadmesh('lon', 'lat', coastline=True)
+```
+
+```{python}
+anthro_conc
+```
+
+```{python}
+anth_highres = TP.get_andrew_antho_cos(
+        ocean_conc['longitude'].values,
+        ocean_conc['latitude'].values)
+```
+
+```{python}
+anth_highres['t'].size
+```
+
+```{python}
+foo = xr.Dataset(data_vars={'anthro_flux': (('year', 'latitude', 'longitude'), anth_highres['anthro_flux'])},
+                coords={'longitude': (('longitude'), anth_highres['longitude']),
+                       'latitude': (('latitude'), anth_highres['latitude']),
+                       'year': (('year'), range(anth_highres['t'].size))})
+# foo.hvplot.quadmesh('longitude', 'latitude')
+```
+
+```{python}
+# foo.sel(year=32) #hvplot.quadmesh('longitude', 'latitude')
+```
+
+```{python}
+anthro_conc.lon.max()
+```
+
+```{python}
+gvds = gv.Dataset(foo.sel(year=32), kdims=['longitude', 'latitude'])
+```
+
+```{python}
+#adapted from http://geoviews.org/user_guide/Resampling_Grids.html
+grid = xe.util.grid_2d(-160, -35, 2, 15, 70, 2)
+grid = xe.util.grid_2d(anthro_conc.lon.min() - 1.25, anthro_conc.lon.max() + 1.25, 2.5,
+                       anthro_conc.lat.min() - 1.0, anthro_conc.lat.max() + 1.0, 2.0)
+target = gv.Dataset(grid, kdims=['lon', 'lat'])
+#weighted_regrid(gvds, target=target, streams=[]) * gv.feature.coastline
+target.data
+```
+
+```{python}
+bar = weighted_regrid(gvds, target=target, streams=[]).data
+print(bar)
+print('-----')
+print(anthro_conc)
 ```
