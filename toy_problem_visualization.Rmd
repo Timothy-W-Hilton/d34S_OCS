@@ -21,6 +21,8 @@ import geoviews.feature as gf
 import xarray as xr  # want this in toy_problem.py eventuall
 import hvplot.xarray
 
+from IPython.display import display
+
 from stem_pytools.domain import calc_grid_area
 from timutils.git_tools import print_cwd_git_version
 ```
@@ -31,7 +33,7 @@ print_cwd_git_version()
 ```
 
 ```{python}
-draw_plots = False
+draw_plots = True
 ```
 
 ```{python}
@@ -42,40 +44,31 @@ draw_plots = False
 ```
 
 ```{python}
-# ocean fluxes, Kettle grid
-# OFKG = gv.Dataset(ocean_flux_KG).to(gv.QuadMesh, kdims=['lon', 'lat']) * gf.coastline
-# ocean fluxes, regridded to match Jim's GEOS-Chem run
-OF = gv.Dataset(ocean_flux).to(gv.QuadMesh, kdims=['longitude', 'latitude']) * gf.coastline
+qm_focean = ocean_flux.hvplot.quadmesh('longitude', 'latitude', coastline=True, label='ocean fOCS')
 if draw_plots:
-    OF #+ OFKG
+    display(qm_focean)
 ```
 
 ```{python}
-qm_anthro = gv.Dataset(anthro_conc['COS'].sel(lev=1)).to(gv.QuadMesh, kdims=['lon', 'lat'])
+qm_anthro = anthro_conc['COS'].sel(lev=1).hvplot.quadmesh('lon', 'lat', coastline=True, 
+                                                          label='anthro [OCS]', legend=False)
 if draw_plots:
-    qm_anthro
-```
-
-```{python}
-qm_anthro = anthro_conc['COS'].sel(lev=1).hvplot.quadmesh('lon', 'lat', coastline=True)
-if draw_plots:
-    qm_anthro
+    display(qm_anthro)
 ```
 
 ```{python}
 draw_plots = True
-qm_anthro = anthro_flux.anthro_flux_permonth.hvplot.quadmesh('longitude', 'latitude', coastline=True)
+qm_fanthro = anthro_flux.anthro_flux_permonth.hvplot.quadmesh('longitude', 'latitude', 
+                                                              coastline=True, label='anthro fOCS', legend=False)
 if draw_plots:
-    qm_anthro
+    display(qm_fanthro)
 ```
 
 ```{python}
-qm_fplant_lowres = plant_flux_lowres['fOCS'].hvplot.quadmesh('lon', 'lat', coastline=True, label='2.5 x 2.0')
-qm_fplant_highres = plant_flux_highres['fOCS'].hvplot.quadmesh('lon', 'lat', coastline=True, label='1.25 x 1.0')
+qm_fplant_lowres = plant_flux_lowres['fOCS'].hvplot.quadmesh('lon', 'lat', coastline=True, 
+                                                             label='2.5 x 2.0', legend=False)
+qm_fplant_highres = plant_flux_highres['fOCS'].hvplot.quadmesh('lon', 'lat', coastline=True, 
+                                                               label='1.25 x 1.0', legend=False)
 if draw_plots:
-    qm_fplant
-```
-
-```{python}
-qm_fplant_lowres + qm_fplant_highres
+    display(qm_fplant_lowres + qm_fplant_highres)
 ```
