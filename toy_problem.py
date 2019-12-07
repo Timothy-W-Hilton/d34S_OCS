@@ -275,26 +275,33 @@ def main():
         lon_geoschem,
         lat_geoschem)
 
+    # combine all three flux and concentration datasets into a single
+    # xarray dataset
+    n_months = 48
+    # repeat the 12-month flux time series 4 times to match the
+    # 48-month concentration time series
+    fanthro_48month = xr.concat([anth_lowres['anthro_flux_permonth']] * 4,
+                                dim='month')
+    focean_48month = xr.concat([da_of] * 4, dim='month')
+    fplant_48month = xr.concat([plant_lowres['fOCS']] * 4, dim='month')
     OCS_all = xr.Dataset(
-        data_vars= {'anthro_flux': (('month', 'lat', 'lon'),
-                                    anth_lowres['anthro_flux_permonth']),
-                    'ocean_flux': (('month', 'lat', 'lon'),
-                                   da_of),
-                    'plant_flux': (('month', 'lat', 'lon'),
-                                   plant_lowres['fOCS'])},
+        data_vars= {'anthro_flux': (('month', 'lat', 'lon'), fanthro_48month),
+                    'ocean_flux': (('month', 'lat', 'lon'), focean_48month),
+                    'plant_flux': (('month', 'lat', 'lon'), fplant_48month),
+                    'anthro_conc': (('month', 'lat', 'lon'),
+                                    anthro_conc.sel(lev=1).drop('lev')['COS']),
+                    'ocean_conc': (('month', 'lat', 'lon'),
+                                   ocean_conc.sel(zid=1).drop('lev')['OCS']),
+                    'plant_conc': (('month', 'lat', 'lon'),
+                                   plant_conc.sel(zid=1).drop('lev')['OCS'])},
         coords = {'lon': (('lon'), lon_geoschem),
                   'lat': (('lat'), lat_geoschem),
-                  'month': (('month'), range(1, 13))})
+                  'month': (('month'), range(n_months))})
 
-    return(plant_highres, plant_lowres,
-           da_of, anth_lowres,
-           anthro_conc, ocean_conc, plant_conc, OCS_all)
+    return(OCS_all)
 
 if __name__ == "__main__":
 
     # todo calculate ocean flux per gridcell per month
-    (plant_flux_highres, plant_flux_lowres,
-     ocean_flux, anthro_flux,
-     anthro_conc, ocean_conc, plant_conc, OCS_all) = main()
-    # plant_flux = get_CASAGFED_plant_ocs(ocean_conc['longitude'].values,
-    #                                     ocean_conc['latitude'].values)
+    # todo make sure units are consistent
+    OCS_all = main()
