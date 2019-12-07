@@ -275,15 +275,26 @@ def main():
         lon_geoschem,
         lat_geoschem)
 
+    OCS_all = xr.Dataset(
+        data_vars= {'anthro_flux': (('month', 'lat', 'lon'),
+                                    anth_lowres['anthro_flux_permonth']),
+                    'ocean_flux': (('month', 'lat', 'lon'),
+                                   da_of),
+                    'plant_flux': (('month', 'lat', 'lon'),
+                                   plant_lowres['fOCS'])},
+        coords = {'lon': (('lon'), lon_geoschem),
+                  'lat': (('lat'), lat_geoschem),
+                  'month': (('month'), range(1, 13))})
+
     return(plant_highres, plant_lowres,
            da_of, anth_lowres,
-           anthro_conc, ocean_conc, plant_conc)
+           anthro_conc, ocean_conc, plant_conc, OCS_all)
 
 if __name__ == "__main__":
 
     # todo calculate ocean flux per gridcell per month
     (plant_flux_highres, plant_flux_lowres,
      ocean_flux, anthro_flux,
-     anthro_conc, ocean_conc, plant_conc) = main()
+     anthro_conc, ocean_conc, plant_conc, OCS_all) = main()
     # plant_flux = get_CASAGFED_plant_ocs(ocean_conc['longitude'].values,
     #                                     ocean_conc['latitude'].values)
