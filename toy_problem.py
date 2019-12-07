@@ -13,7 +13,7 @@ import calendar
 from stem_pytools.domain import calc_grid_area
 from holoviews.operation.datashader import regrid
 
-DEBUG_FLAG = False
+DEBUG_FLAG = True
 SECS_PER_MINUTE = 60
 MINS_PER_HOUR = 60
 HOURS_PER_DAY = 24
@@ -22,6 +22,42 @@ SECS_PER_DAY = SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY
 DAYS_PER_MONTH = np.array([calendar.monthrange(2012, m)[1]
                            for m in range(1, 13)])
 SECS_PER_MONTH = SECS_PER_DAY * DAYS_PER_MONTH
+
+def calc_cos_plant_uptake(GEE, LRU, CO2, COS):
+    """
+    calculate plant COS uptake from CO2 gross ecosystem
+    productivity, leaf relative uptake, atmospheric CO2
+    concentration, and atmospheric COS concentration.
+    INPUT PARAMETERS:
+    GEE: np.ndarray of gross primary production, kg C m-2 s-1
+    LRU: leaf relative uptake
+        (umol CO2 m-2 s-1 (ppm CO2)-1) /
+        (pmol COS m-2 s-1 (ppt COS)-1)
+    CO2: atmospheric CO2 concentration (ppm)
+    COS: atmospheric COS concentration (ppt)
+
+    RETURNS:
+    plant COS flux (mol COS m-2 yr-1)
+
+    NOTES:
+    LRU, CO2, and COS may be numpy arrays of any dimensions that
+    are broadcastable to self.GPP_124x124.shape.  This permits
+    flexibility in specifying each as an invariant scalar, a
+    spatially varying but temporally invariant 2 dimensional
+    array, or a temporally and spatially varying 3 or 4
+    dimensional array.
+    """
+    #define some constants for unit conversion
+    g_per_kg = 1e3   #grams per kilogram
+    molC_per_gC = 1.0 / 12.011   #moles carbon per gram carbon
+    umol_per_mol = 1e6    #micromoles per mole
+    mol_per_pmol = 1e-12
+    #calculate the COS plant flux in pmol m-2 s-1
+    f_COS_plant = (GEE * LRU * (COS/CO2) *
+                   g_per_kg * molC_per_gC * umol_per_mol * mol_per_pmol)
+
+    return(f_COS_plant)
+
 
 def parse_kettle_flux(fname):
     f = open(fname, 'r')
@@ -97,6 +133,31 @@ def format_GEOSChem_dataset(this_dataset):
                           data=range(this_dataset.dims['tid'])))
     return(this_dataset)
 
+
+def get_CASAGFED_plant_ocs(new_lon1d, new_lat1d):
+    """read CASA-GFED plant OCS flux
+    """
+    fOCS = xr.open_dataset('/Users/tim/work/Data/CASA_GFED/CASAGFED_fOCS.nc')
+    grid = xe.util.grid_2d(new_lon1d.min() - 1.25,
+                           new_lon1d.max() + 1.25,
+                           2.5,
+                           new_lat1d.min() - 1.0,
+                           new_lat1d.max() + 1.0,
+                           2.0)
+    grid = xe.util.grid_2d(new_lon1d.min() - 1.25,
+                           new_lon1d.max() + 1.25,
+                           2.5,
+                           new_lat1d.min() - 1.0,
+                           new_lat1d.max() + 1.0,
+                           2.0)
+    target = gv.Dataset(grid, kdims=['lon', 'lat'])
+    gvds = gv.Dataset(fOCS, kdims=['lon', 'lat', 'month'])
+    gvds = gv.Dataset(fOCS['fOCS'].sel(month=1).drop('month'), kdims=['lon', 'lat'])
+    fOCS_lowres = weighted_regrid(gvds,
+                                  target=target,
+                                  streams=[],
+                                  reuse_weights=False).data
+    return(fOCS_lowres)
 
 def get_andrew_antho_cos(new_lon1d, new_lat1d):
     fname = '/Users/tim/work/Data/Anthro_COS/Total_Anth._COS1980-2012_v3.nc'
@@ -199,13 +260,16 @@ def main():
                             'ocean_cos.dat',
                             ocean_conc['longitude'].values,
                             ocean_conc['latitude'].values)
-    return(da_of, anthro_conc, ocean_conc, plant_conc)
-
-
-if __name__ == "__main__":
-
-    (da_of, anthro_conc, ocean_conc, plant_conc) = main()
 
     anth_highres, anth_lowres = get_andrew_antho_cos(
         ocean_conc['longitude'].values,
         ocean_conc['latitude'].values)
+
+    return(da_of, anth_lowres, anthro_conc, ocean_conc, plant_conc)
+
+if __name__ == "__main__":
+
+    # todo calculate ocean flux per gridcell per month
+    (da_of, anthro_flux, anthro_conc, ocean_conc, plant_conc) = main()
+    plant_flux = get_CASAGFED_plant_ocs(ocean_conc['longitude'].values,
+                                        ocean_conc['latitude'].values)
