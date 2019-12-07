@@ -38,37 +38,30 @@ draw_plots = True
 
 ```{python}
 # da_of, anthro_conc, ocean_conc, plant_conc = TP.main()
-(plant_flux_highres, plant_flux_lowres, 
- ocean_flux, anthro_flux, 
- anthro_conc, ocean_conc, plant_conc) = TP.main()
+OCS = TP.main()
 ```
 
 ```{python}
-qm_focean = ocean_flux.hvplot.quadmesh('longitude', 'latitude', coastline=True, label='ocean fOCS')
-if draw_plots:
-    display(qm_focean)
+opts_common = {'coastline': True, 'legend': False}
 ```
 
 ```{python}
-qm_anthro = anthro_conc['COS'].sel(lev=1).hvplot.quadmesh('lon', 'lat', coastline=True, 
-                                                          label='anthro [OCS]', legend=False)
+qm_focean = OCS['ocean_flux'].hvplot.quadmesh('lon', 'lat', label='ocean fOCS', **opts_common)
+qm_ocean = OCS['ocean_conc'].hvplot.quadmesh('lon', 'lat', label='ocean [OCS]', **opts_common)
 if draw_plots:
-    display(qm_anthro)
+    display(qm_focean + qm_ocean)
 ```
 
 ```{python}
-draw_plots = True
-qm_fanthro = anthro_flux.anthro_flux_permonth.hvplot.quadmesh('longitude', 'latitude', 
-                                                              coastline=True, label='anthro fOCS', legend=False)
+qm_fanthro = OCS['anthro_flux'].hvplot.quadmesh('lon', 'lat', label='anthro fOCS', **opts_common)
+qm_anthro = OCS['anthro_conc'].hvplot.quadmesh('lon', 'lat', label='anthro [OCS]', **opts_common)
 if draw_plots:
-    display(qm_fanthro)
+    display(qm_fanthro + qm_anthro)
 ```
 
 ```{python}
-qm_fplant_lowres = plant_flux_lowres['fOCS'].hvplot.quadmesh('lon', 'lat', coastline=True, 
-                                                             label='2.5 x 2.0', legend=False)
-qm_fplant_highres = plant_flux_highres['fOCS'].hvplot.quadmesh('lon', 'lat', coastline=True, 
-                                                               label='1.25 x 1.0', legend=False)
+qm_fplant = OCS['plant_flux'].hvplot.quadmesh('lon', 'lat', label='plant fOCS', **opts_common)
+qm_plant = OCS['plant_conc'].hvplot.quadmesh('lon', 'lat', label='plant [OCS]', **opts_common)                                            
 if draw_plots:
-    display(qm_fplant_lowres + qm_fplant_highres)
+    display(qm_fplant + qm_plant)
 ```
