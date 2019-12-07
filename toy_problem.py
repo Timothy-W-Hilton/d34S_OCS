@@ -144,20 +144,25 @@ def get_CASAGFED_plant_ocs(new_lon1d, new_lat1d):
                            new_lat1d.min() - 1.0,
                            new_lat1d.max() + 1.0,
                            2.0)
-    grid = xe.util.grid_2d(new_lon1d.min() - 1.25,
-                           new_lon1d.max() + 1.25,
-                           2.5,
-                           new_lat1d.min() - 1.0,
-                           new_lat1d.max() + 1.0,
-                           2.0)
     target = gv.Dataset(grid, kdims=['lon', 'lat'])
-    gvds = gv.Dataset(fOCS, kdims=['lon', 'lat', 'month'])
-    gvds = gv.Dataset(fOCS['fOCS'].sel(month=1).drop('month'), kdims=['lon', 'lat'])
-    fOCS_lowres = weighted_regrid(gvds,
-                                  target=target,
-                                  streams=[],
-                                  reuse_weights=False).data
-    return(fOCS_lowres)
+
+    # fOCS_new = xr.Dataset(
+    #     data_vars= {'plant_flux': (('month', 'lat', 'lon'),
+    #                                 fOCS['fOCS'])},
+    #     coords= {'lon': (('lon'), fOCS['lon']),
+    #              'lat': (('lat'), fOCS['lat']),
+    #              'month': (('month'), range(1, 13))})
+    #regrid adapted from
+    images = gv.Dataset(fOCS).to(gv.Image, ['lon' ,'lat'])
+    fOCS_lowres_quadmesh = weighted_regrid(images,
+                                           target=target,
+                                           streams=[],
+                                           reuse_weights=True)
+    # fOCS_lowres = [fOCS_lowres_quadmesh.data[(m, )].data for m in range(1, 13)]
+    fOCS_lowres = xr.concat([fOCS_lowres_quadmesh.data[(m, )].data
+                             for m in range(1, 13)],
+                            dim='month')
+    return(fOCS, fOCS_lowres)
 
 def get_andrew_antho_cos(new_lon1d, new_lat1d):
     fname = '/Users/tim/work/Data/Anthro_COS/Total_Anth._COS1980-2012_v3.nc'
@@ -246,6 +251,9 @@ def main():
     ocean_conc = format_GEOSChem_dataset(ocean_conc)
     plant_conc = format_GEOSChem_dataset(plant_conc)
 
+    lon_geoschem = ocean_conc['longitude'].values
+    lat_geoschem = ocean_conc['latitude'].values
+
     anthro_conc = xr.open_dataset(os.path.join(global_conc_dir, 'anthro.nc'))
     # remove singleton dimemsion time.  the timestamp is still present
     # in tstep
@@ -258,18 +266,24 @@ def main():
 
     da_of = get_kettle_data('ocean_flux',
                             'ocean_cos.dat',
-                            ocean_conc['longitude'].values,
-                            ocean_conc['latitude'].values)
-
+                            lon_geoschem,
+                            lat_geoschem)
     anth_highres, anth_lowres = get_andrew_antho_cos(
-        ocean_conc['longitude'].values,
-        ocean_conc['latitude'].values)
+        lon_geoschem,
+        lat_geoschem)
+    plant_highres, plant_lowres = get_CASAGFED_plant_ocs(
+        lon_geoschem,
+        lat_geoschem)
 
-    return(da_of, anth_lowres, anthro_conc, ocean_conc, plant_conc)
+    return(plant_highres, plant_lowres,
+           da_of, anth_lowres,
+           anthro_conc, ocean_conc, plant_conc)
 
 if __name__ == "__main__":
 
     # todo calculate ocean flux per gridcell per month
-    (da_of, anthro_flux, anthro_conc, ocean_conc, plant_conc) = main()
-    plant_flux = get_CASAGFED_plant_ocs(ocean_conc['longitude'].values,
-                                        ocean_conc['latitude'].values)
+    (plant_flux_highres, plant_flux_lowres,
+     ocean_flux, anthro_flux,
+     anthro_conc, ocean_conc, plant_conc) = main()
+    # plant_flux = get_CASAGFED_plant_ocs(ocean_conc['longitude'].values,
+    #                                     ocean_conc['latitude'].values)
