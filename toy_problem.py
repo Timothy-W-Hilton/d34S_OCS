@@ -264,6 +264,20 @@ def main():
     anthro_conc.rename({'lat': 'latitude',
                         'lon': 'longitude'})
 
+
+    anthro_conc = anthro_conc.rename_dims({'tstep': 'tid',
+                                      'lon': 'xid',
+                                      'lat': 'yid',
+                                      'lev': 'zid'})
+    ocean_conc = ocean_conc.rename_vars({'latitude': 'lat',
+                                         'longitude': 'lon'})
+    plant_conc = plant_conc.rename_vars({'latitude': 'lat',
+                                         'longitude': 'lon'})
+    ocean_conc, anthro_conc, plant_conc = xr.align(ocean_conc,
+                                                   anthro_conc,
+                                                   plant_conc,
+                                                   join='exact')
+
     da_of = get_kettle_data('ocean_flux',
                             'ocean_cos.dat',
                             lon_geoschem,
@@ -289,7 +303,7 @@ def main():
                     'ocean_flux': (('month', 'lat', 'lon'), focean_48month),
                     'plant_flux': (('month', 'lat', 'lon'), fplant_48month),
                     'anthro_conc': (('month', 'lat', 'lon'),
-                                    anthro_conc.sel(lev=1).drop('lev')['COS']),
+                                    anthro_conc.sel(zid=1).drop('lev')['COS']),
                     'ocean_conc': (('month', 'lat', 'lon'),
                                    ocean_conc.sel(zid=1).drop('lev')['OCS']),
                     'plant_conc': (('month', 'lat', 'lon'),
@@ -298,18 +312,6 @@ def main():
                   'lat': (('lat'), lat_geoschem),
                   'month': (('month'), range(n_months))})
 
-    anthro_conc = anthro_conc.rename_dims({'tstep': 'tid',
-                                      'lon': 'xid',
-                                      'lat': 'yid',
-                                      'lev': 'zid'})
-    ocean_conc = ocean_conc.rename_vars({'latitude': 'lat',
-                                         'longitude': 'lon'})
-    plant_conc = plant_conc.rename_vars({'latitude': 'lat',
-                                         'longitude': 'lon'})
-    ocean_conc, anthro_conc, plant_conc = xr.align(ocean_conc,
-                                                   anthro_conc,
-                                                   plant_conc,
-                                                   join='exact')
 
     #return(OCS_all)
 
