@@ -298,10 +298,23 @@ def main():
                   'lat': (('lat'), lat_geoschem),
                   'month': (('month'), range(n_months))})
 
-    return(OCS_all)
+    anthro_conc = anthro_conc.rename_dims({'tstep': 'tid',
+                                      'lon': 'xid',
+                                      'lat': 'yid',
+                                      'lev': 'zid'})
+    ocean_conc = ocean_conc.rename_vars({'latitude': 'lat',
+                                         'longitude': 'lon'})
+    plant_conc = plant_conc.rename_vars({'latitude': 'lat',
+                                         'longitude': 'lon'})
+    ocean_conc, anthro_conc, plant_conc = xr.align(ocean_conc,
+                                                   anthro_conc,
+                                                   plant_conc,
+                                                   join='exact')
 
-if __name__ == "__main__":
+    #return(OCS_all)
 
-    # todo calculate ocean flux per gridcell per month
-    # todo make sure units are consistent
-    OCS_all = main()
+# if __name__ == "__main__":
+
+#     # todo calculate ocean flux per gridcell per month
+#     # todo make sure units are consistent
+#     OCS_all = main()
