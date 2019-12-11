@@ -222,6 +222,20 @@ def get_andrew_antho_cos(new_lon1d, new_lat1d):
 
     return(anth_highres, anth_lowres)
 
+def find_lowest_valid_concentration(da, dim):
+    """return the first concentration along a dimension with a non-nan value
+    """
+    idx = np.isnan(da).argmin(dim=dim).values
+    tdim, xdim, ydim = idx.shape
+    I, J, K = np.ogrid[:tdim, :xdim, :ydim]
+    sfc_values_arr = da.values[I, idx, J, K]
+    # make sure all extracted concentrations are valid numbers
+    assert(np.isfinite(sfc_values_arr).all())
+    sfc_values = da.sel(zid=0).drop('lev').copy()
+    sfc_values.values = sfc_values_arr
+    return(sfc_values)
+
+
 def get_area_all_gridcells(lon, lat, d_lon = 2.5, d_lat = 2.0):
     """calculate area in km^2 of every cell in two 2d arrays of lats, lons
 
@@ -303,20 +317,23 @@ def main():
                     'ocean_flux': (('month', 'lat', 'lon'), focean_48month),
                     'plant_flux': (('month', 'lat', 'lon'), fplant_48month),
                     'anthro_conc': (('month', 'lat', 'lon'),
-                                    anthro_conc.sel(zid=1).drop('lev')['COS']),
+                                    find_lowest_valid_concentration(
+                                        anthro_conc['COS'], 'zid')),
                     'ocean_conc': (('month', 'lat', 'lon'),
-                                   ocean_conc.sel(zid=1).drop('lev')['OCS']),
+                                   find_lowest_valid_concentration(
+                                       ocean_conc['OCS'], 'zid')),
                     'plant_conc': (('month', 'lat', 'lon'),
-                                   plant_conc.sel(zid=1).drop('lev')['OCS'])},
+                                   find_lowest_valid_concentration(
+                                       plant_conc['OCS'], 'zid'))},
         coords = {'lon': (('lon'), lon_geoschem),
                   'lat': (('lat'), lat_geoschem),
                   'month': (('month'), range(n_months))})
 
 
-    #return(OCS_all)
+    return(OCS_all)
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
 
-#     # todo calculate ocean flux per gridcell per month
-#     # todo make sure units are consistent
-#     OCS_all = main()
+    # todo calculate ocean flux per gridcell per month
+    # todo make sure units are consistent
+    OCS_all = main()
