@@ -10,6 +10,7 @@ import xesmf as xe
 from geoviews.operation.regrid import weighted_regrid
 import calendar
 
+from timutils.io import delete_if_exists
 from stem_pytools.domain import calc_grid_area
 from holoviews.operation.datashader import regrid
 
@@ -134,6 +135,46 @@ def format_GEOSChem_dataset(this_dataset):
     return(this_dataset)
 
 
+def weighted_regrid_wrapper(gvds, target, file_pattern):
+    """regrid using saved regrid weight from a file
+
+    This is a workaround for
+    geoviews.operation.regrid.weighted_regrid() not respecting
+    file_pattern parameter
+    (https://github.com/holoviz/geoviews/issues/405).  Copies the
+    saved regride weights to the default filename that cannot
+    currently be changed, then delete the default file afterwards.
+
+    #regrid adapted from
+    #http://geoviews.org/user_guide/Resampling_Grids.html
+
+    """
+    from shutil import copyfile
+    default_fname = 'bilinear_(-180.000, 177.500)_(-89.500, 90.500)_144x91.nc'
+    # if requested weight file exists, use it.  Otherwise remove and
+    # recreate the default file because who knows what's in it.
+    if os.path.exists(file_pattern):
+        "print using {}".format(file_pattern)
+        calculate_weights = False
+        copyfile(file_pattern, default_fname)
+    else:
+        "print using {}".format(default_fname)
+        calculate_weights = True
+        delete_if_exists(default_fname)
+    result = weighted_regrid(gvds,
+                             # conservative doesn't currently work
+                             # (https://github.com/holoviz/geoviews/issues/406)
+                                  interpolation='bilinear',
+                             target=target,
+                             file_pattern=file_pattern,
+                             reuse_weights=True,
+                             dynamic=False)
+    if calculate_weights:
+        copyfile(default_fname, file_pattern)
+    delete_if_exists(default_fname)
+    return(result)
+
+
 def get_CASAGFED_plant_ocs(new_lon1d, new_lat1d):
     """read CASA-GFED plant OCS flux
     """
@@ -146,20 +187,12 @@ def get_CASAGFED_plant_ocs(new_lon1d, new_lat1d):
                            2.0)
     target = gv.Dataset(grid, kdims=['lon', 'lat'])
 
-    # fOCS_new = xr.Dataset(
-    #     data_vars= {'plant_flux': (('month', 'lat', 'lon'),
-    #                                 fOCS['fOCS'])},
-    #     coords= {'lon': (('lon'), fOCS['lon']),
-    #              'lat': (('lat'), fOCS['lat']),
-    #              'month': (('month'), range(1, 13))})
-    #regrid adapted from
     images = gv.Dataset(fOCS).to(gv.Image, ['lon' ,'lat'])
-    fOCS_lowres_quadmesh = weighted_regrid(images,
-                                           target=target,
-                                           streams=[],
-                                           reuse_weights=True)
-    # fOCS_lowres = [fOCS_lowres_quadmesh.data[(m, )].data for m in range(1, 13)]
-    fOCS_lowres = xr.concat([fOCS_lowres_quadmesh.data[(m, )].data
+    print('starting plant regrid')
+    fOCS_lowres_quadmesh = weighted_regrid_wrapper(images,
+                                                   target,
+                                                   'bilinear_181x288_144x91.nc')
+    fOCS_lowres = xr.concat([fOCS_lowres_quadmesh[(m, )].data
                              for m in range(1, 13)],
                             dim='month')
     return(fOCS, fOCS_lowres)
@@ -190,8 +223,6 @@ def get_andrew_antho_cos(new_lon1d, new_lat1d):
                           range(anth_ocs_raw['t'].size)),
                  'month': (('month'),
                            range(1, 13))})
-    #regrid adapted from
-    #http://geoviews.org/user_guide/Resampling_Grids.html
 
     gvds = gv.Dataset(anth_highres.sel(year=32),
                       kdims=['lon', 'lat'])
@@ -202,7 +233,12 @@ def get_andrew_antho_cos(new_lon1d, new_lat1d):
                            new_lat1d.max() + 1.0,
                            2.0)
     target = gv.Dataset(grid, kdims=['lon', 'lat'])
-    anth_lowres = weighted_regrid(gvds, target=target, streams=[]).data
+    # anth_lowres = weighted_regrid(gvds, target=target, streams=[]).data
+    print('starting anth regrigd')
+    anth_lowres = weighted_regrid_wrapper(gvds,
+                                          target,
+                                          'bilinear_1800x3600_144x91.nc').data
+
     anth_lowres = anth_lowres.assign_coords(month=range(1, 13))
     anth_lowres['anthro_flux'] = anth_lowres['anthro_flux'].assign_attrs(
         units='pmol m-2 s-1')
@@ -338,3 +374,6 @@ if __name__ == "__main__":
     # todo calculate ocean flux per gridcell per month
     # todo make sure units are consistent
     OCS_all = main()
+    # mode='w' ensures any existing file will be overwritten
+    delete_if_exists('OCS_all.nc')
+    OCS_all.to_netcdf('OCS_all.nc', mode='w')
