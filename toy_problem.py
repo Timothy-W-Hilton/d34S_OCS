@@ -180,11 +180,11 @@ def get_andrew_antho_cos(new_lon1d, new_lat1d):
     # This (below) dataset format works for plotting for reasons I do
     # not yet understand
     anth_highres = xr.Dataset(
-        data_vars= {'anthro_flux': (('year', 'latitude', 'longitude'),
+        data_vars= {'anthro_flux': (('year', 'lat', 'lon'),
                                     anth_ocs_raw['anthro_flux'])},
-        coords= {'longitude': (('longitude'),
+        coords= {'lon': (('lon'),
                                anth_ocs_raw['longitude']),
-                 'latitude': (('latitude'),
+                 'lat': (('lat'),
                               anth_ocs_raw['latitude']),
                  'year': (('year'),
                           range(anth_ocs_raw['t'].size)),
@@ -192,8 +192,9 @@ def get_andrew_antho_cos(new_lon1d, new_lat1d):
                            range(1, 13))})
     #regrid adapted from
     #http://geoviews.org/user_guide/Resampling_Grids.html
+
     gvds = gv.Dataset(anth_highres.sel(year=32),
-                      kdims=['longitude', 'latitude'])
+                      kdims=['lon', 'lat'])
     grid = xe.util.grid_2d(new_lon1d.min() - 1.25,
                            new_lon1d.max() + 1.25,
                            2.5,
