@@ -195,6 +195,9 @@ def get_CASAGFED_plant_ocs(new_lon1d, new_lat1d):
     fOCS_lowres = xr.concat([fOCS_lowres_quadmesh[(m, )].data
                              for m in range(1, 13)],
                             dim='month')
+
+    fOCS_lowres = fOCS_lowres.assign(
+        fOCS=fOCS_lowres['fOCS'].assign_attrs(units='pmol m-2 mon-1'))
     return(fOCS, fOCS_lowres)
 
 def get_andrew_antho_cos(new_lon1d, new_lat1d):
