@@ -75,21 +75,21 @@ def casa_aggregate(gee):
     # gee = gee.assign(area=(('lat', 'lon'),
     #                        get_area_all_gridcells(lons, lats, 1.5, 1)))
     gee['GEE'] = gee['GEE'].assign_attrs(units="kgC m-2 s-1")
-    gee = gee.assign(fOCS=xr.DataArray(
+    gee = gee.assign(fOCS_s=xr.DataArray(
         data=calc_cos_plant_uptake(gee.GEE.values, 1.61, 1.1, 1.0),
         dims=('t-3hr', 'lat', 'lon'),
-        name='fOCS'))
-    gee['fOCS'] = gee['fOCS'].assign_attrs(units="pmol m-2 s-1")
+        name='fOCS_s'))
+    gee['fOCS_s'] = gee['fOCS_s'].assign_attrs(units="pmol m-2 s-1")
     secs_per_3_hrs = 60 * 60 * 3
     gee['GEE'] = gee['GEE'] * secs_per_3_hrs
     gee = gee.assign(date=(('t-3hr'), dates),
                      month=(('t-3hr'), dates.month))
     gee = gee.groupby(gee['month']).sum()
-    gee['fOCS'] = gee['fOCS'].assign_attrs(units="pmol m-2 mon-1")
+    gee['fOCS'] = gee['fOCS_s'].assign_attrs(units="pmol m-2 mon-1")
     gee['GEE'] = gee['GEE'].assign_attrs(units="kgC m-2 mon-1")
     gee.assign_attrs(description=('OCS plant flux calculated from '
                                   'CASA-GFED CO2 GPP, LRU = 1.61, '
-                                  'CO2/OCS = 1.1'))
+                                  'OCS/CO2 = 1.1'))
     return(gee)
 
 # def CASA_GPP_2_monthly_fOCS():
