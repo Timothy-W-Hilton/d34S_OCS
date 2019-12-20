@@ -1,7 +1,5 @@
 import xarray as xr
-import pandas as pd
 import numpy as np
-import re
 import os
 import fortranformat
 import idwnn_kdtree_interp as interp
@@ -12,7 +10,6 @@ import calendar
 
 from timutils.io import delete_if_exists
 from stem_pytools.domain import calc_grid_area
-from holoviews.operation.datashader import regrid
 
 DEBUG_FLAG = True
 SECS_PER_MINUTE = 60
@@ -23,6 +20,7 @@ SECS_PER_DAY = SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY
 DAYS_PER_MONTH = np.array([calendar.monthrange(2012, m)[1]
                            for m in range(1, 13)])
 SECS_PER_MONTH = SECS_PER_DAY * DAYS_PER_MONTH
+
 
 def calc_cos_plant_uptake(GEE, LRU, CO2, COS):
     """
@@ -48,12 +46,12 @@ def calc_cos_plant_uptake(GEE, LRU, CO2, COS):
     array, or a temporally and spatially varying 3 or 4
     dimensional array.
     """
-    #define some constants for unit conversion
-    g_per_kg = 1e3   #grams per kilogram
-    molC_per_gC = 1.0 / 12.011   #moles carbon per gram carbon
-    umol_per_mol = 1e6    #micromoles per mole
+    # define some constants for unit conversion
+    g_per_kg = 1e3   # grams per kilogram
+    molC_per_gC = 1.0 / 12.011   # moles carbon per gram carbon
+    umol_per_mol = 1e6    # micromoles per mole
     mol_per_pmol = 1e-12
-    #calculate the COS plant flux in pmol m-2 s-1
+    # calculate the COS plant flux in pmol m-2 s-1
     f_COS_plant = (GEE * LRU * (COS/CO2) *
                    g_per_kg * molC_per_gC * umol_per_mol * mol_per_pmol)
 
@@ -74,7 +72,7 @@ def parse_kettle_flux(fname):
     data = np.array([reader.read(f) for f in remaining_content])
     lon = data[:, 0]
     lat = data[:, 1]
-    mask = data[:, 2]
+    # mask = data[:, 2]  # remove this?
     data_reshaped = data[:, 3:].reshape(36, 72, 12)
     ds = xr.DataArray(data_reshaped,
                       coords={'month': range(12),
@@ -119,6 +117,7 @@ def get_kettle_data(data_array_name, fname, lon, lat):
                                    'latitude': lat},
                            dims=['month', 'latitude', 'longitude'],
                            name=data_array_name)
+    flux_da = flux_da.assign_attrs(units='pmol m-2 s-1')
     return(flux_da)
 
 
@@ -164,7 +163,7 @@ def weighted_regrid_wrapper(gvds, target, file_pattern):
     result = weighted_regrid(gvds,
                              # conservative doesn't currently work
                              # (https://github.com/holoviz/geoviews/issues/406)
-                                  interpolation='bilinear',
+                             interpolation='bilinear',
                              target=target,
                              file_pattern=file_pattern,
                              reuse_weights=True,
@@ -187,11 +186,10 @@ def get_CASAGFED_plant_ocs(new_lon1d, new_lat1d):
                            2.0)
     target = gv.Dataset(grid, kdims=['lon', 'lat'])
 
-    images = gv.Dataset(fOCS).to(gv.Image, ['lon' ,'lat'])
+    images = gv.Dataset(fOCS).to(gv.Image, ['lon', 'lat'])
     print('starting plant regrid')
-    fOCS_lowres_quadmesh = weighted_regrid_wrapper(images,
-                                                   target,
-                                                   'bilinear_181x288_144x91.nc')
+    fOCS_lowres_quadmesh = weighted_regrid_wrapper(
+        images, target, 'bilinear_181x288_144x91.nc')
     fOCS_lowres = xr.concat([fOCS_lowres_quadmesh[(m, )].data
                              for m in range(1, 13)],
                             dim='month')
@@ -199,6 +197,7 @@ def get_CASAGFED_plant_ocs(new_lon1d, new_lat1d):
     fOCS_lowres = fOCS_lowres.assign(
         fOCS=fOCS_lowres['fOCS'].assign_attrs(units='pmol m-2 mon-1'))
     return(fOCS, fOCS_lowres)
+
 
 def get_andrew_antho_cos(new_lon1d, new_lat1d):
     fname = '/Users/tim/work/Data/Anthro_COS/Total_Anth._COS1980-2012_v3.nc'
@@ -209,6 +208,7 @@ def get_andrew_antho_cos(new_lon1d, new_lat1d):
         {'Total_Anth._COS': 'anthro_flux',
          'lon': 'longitude',
          'lat': 'latitude'})
+
     anth_ocs_raw = anth_ocs_high_res.assign_coords(
         longitude=anth_ocs_high_res.longitude,
         latitude=anth_ocs_high_res.latitude,
@@ -216,16 +216,16 @@ def get_andrew_antho_cos(new_lon1d, new_lat1d):
     # This (below) dataset format works for plotting for reasons I do
     # not yet understand
     anth_highres = xr.Dataset(
-        data_vars= {'anthro_flux': (('year', 'lat', 'lon'),
-                                    anth_ocs_raw['anthro_flux'])},
-        coords= {'lon': (('lon'),
-                               anth_ocs_raw['longitude']),
-                 'lat': (('lat'),
-                              anth_ocs_raw['latitude']),
-                 'year': (('year'),
-                          range(anth_ocs_raw['t'].size)),
-                 'month': (('month'),
-                           range(1, 13))})
+        data_vars={'anthro_flux': (('year', 'lat', 'lon'),
+                                   anth_ocs_raw['anthro_flux'])},
+        coords={'lon': (('lon'),
+                        anth_ocs_raw['longitude']),
+                'lat': (('lat'),
+                        anth_ocs_raw['latitude']),
+                'year': (('year'),
+                         range(anth_ocs_raw['t'].size)),
+                'month': (('month'),
+                          range(1, 13))})
 
     gvds = gv.Dataset(anth_highres.sel(year=32),
                       kdims=['lon', 'lat'])
@@ -246,21 +246,27 @@ def get_andrew_antho_cos(new_lon1d, new_lat1d):
     anth_lowres['anthro_flux'] = anth_lowres['anthro_flux'].assign_attrs(
         units='pmol m-2 s-1')
 
-    #flux (pmol / m2/ s)
+    # flux (pmol / m2/ s)
+    focs_fullseries = xr.DataArray(
+        data=np.tile(anth_lowres['anthro_flux'].values,
+                     reps=(MONTHS_PER_YEAR * 4, 1, 1)),
+        dims=(('time', 'y', 'x')))
     focs_permonth = xr.DataArray(
-        data=np.tile(anth_lowres['anthro_flux'].values / MONTHS_PER_YEAR,
-                     reps = (MONTHS_PER_YEAR, 1, 1)),
+        data=np.tile(anth_lowres['anthro_flux'].values,
+                     reps=(MONTHS_PER_YEAR, 1, 1)),
         dims=(('month', 'y', 'x')))
-    #flux (pmol / m2/ month)
+    # flux (pmol / m2/ month)
     focs_permonth = focs_permonth * SECS_PER_MONTH[:, np.newaxis, np.newaxis]
-    #flux (pmol / gridcell / month)
+    # flux (pmol / gridcell / month)
     area_per_gridcell = get_area_all_gridcells(target.data['lon'].data,
                                                target.data['lat'].data)
     focs_permonth = focs_permonth * area_per_gridcell[np.newaxis, ...]
     focs_permonth = focs_permonth.assign_attrs(units='pmol / gridcell / month')
-    anth_lowres = anth_lowres.assign(anthro_flux_permonth=focs_permonth)
+    anth_lowres = anth_lowres.assign(anthro_flux_permonth=focs_permonth,
+                                     anthro_flux_full=focs_fullseries)
 
     return(anth_highres, anth_lowres)
+
 
 def find_lowest_valid_concentration(da, dim):
     """return the first concentration along a dimension with a non-nan value
@@ -268,7 +274,7 @@ def find_lowest_valid_concentration(da, dim):
     idx = np.isnan(da).argmin(dim=dim).values
     tdim, xdim, ydim = idx.shape
     I, J, K = np.ogrid[:tdim, :xdim, :ydim]
-    sfc_values_arr = da.values[I, idx, J, K]
+    sfc_values_arr = da.values[I, idx, J, K] * 1e12
     # make sure all extracted concentrations are valid numbers
     assert(np.isfinite(sfc_values_arr).all())
     sfc_values = da.sel(zid=0).drop('lev').copy()
@@ -276,7 +282,7 @@ def find_lowest_valid_concentration(da, dim):
     return(sfc_values)
 
 
-def get_area_all_gridcells(lon, lat, d_lon = 2.5, d_lat = 2.0):
+def get_area_all_gridcells(lon, lat, d_lon=2.5, d_lat=2.0):
     """calculate area in km^2 of every cell in two 2d arrays of lats, lons
 
     assumes lat, lon specify the center of the cell
@@ -284,18 +290,18 @@ def get_area_all_gridcells(lon, lat, d_lon = 2.5, d_lat = 2.0):
     area = np.zeros(lat.shape)
     for i in range(lat.shape[0]):
         for j in range(lat.shape[1]):
-            area[i, j]  = calc_grid_area(lon[i, j] + (d_lon / 2.0),
-                                         lon[i, j] - (d_lon / 2.0),
-                                         lat[i, j] + (d_lat / 2.0),
-                                         lat[i, j] - (d_lat / 2.0))
-    area = area * 1e-6  # convert m^2 to km^2
+            area[i, j] = calc_grid_area(lon[i, j] + (d_lon / 2.0),
+                                        lon[i, j] - (d_lon / 2.0),
+                                        lat[i, j] + (d_lat / 2.0),
+                                        lat[i, j] - (d_lat / 2.0))
+            area = area * 1e-6  # convert m^2 to km^2
     if DEBUG_FLAG:
         print("*LAUGH TEST* total Earth "
               "area (km^2): {:0.2e}".format(area.sum()))
     return(area)
 
 
-def main():
+def main_get_all_data():
     global_conc_dir = os.path.join('/', 'Users', 'tim', 'work',
                                    'Data', 'Jim_global')
     ocean_conc, plant_conc = (xr.open_mfdataset(
@@ -318,11 +324,10 @@ def main():
     anthro_conc.rename({'lat': 'latitude',
                         'lon': 'longitude'})
 
-
     anthro_conc = anthro_conc.rename_dims({'tstep': 'tid',
-                                      'lon': 'xid',
-                                      'lat': 'yid',
-                                      'lev': 'zid'})
+                                           'lon': 'xid',
+                                           'lat': 'yid',
+                                           'lev': 'zid'})
     ocean_conc = ocean_conc.rename_vars({'latitude': 'lat',
                                          'longitude': 'lon'})
     plant_conc = plant_conc.rename_vars({'latitude': 'lat',
@@ -348,35 +353,44 @@ def main():
     n_months = 48
     # repeat the 12-month flux time series 4 times to match the
     # 48-month concentration time series
-    fanthro_48month = xr.concat([anth_lowres['anthro_flux_permonth']] * 4,
-                                dim='month')
+    # fanthro_48month = xr.concat([anth_lowres['anthro_flux_permonth']] * 4,
+    #                             dim='month')  # remove this?
     focean_48month = xr.concat([da_of] * 4, dim='month')
     fplant_48month = xr.concat([plant_lowres['fOCS']] * 4, dim='month')
     OCS_all = xr.Dataset(
-        data_vars= {'anthro_flux': (('month', 'lat', 'lon'), fanthro_48month),
-                    'ocean_flux': (('month', 'lat', 'lon'), focean_48month),
-                    'plant_flux': (('month', 'lat', 'lon'), fplant_48month),
-                    'anthro_conc': (('month', 'lat', 'lon'),
-                                    find_lowest_valid_concentration(
-                                        anthro_conc['COS'], 'zid')),
-                    'ocean_conc': (('month', 'lat', 'lon'),
+        data_vars={'anthro_flux': (('month', 'lat', 'lon'),
+                                   anth_lowres['anthro_flux_full']),
+                   'ocean_flux': (('month', 'lat', 'lon'), focean_48month),
+                   'plant_flux': (('month', 'lat', 'lon'), fplant_48month),
+                   'anthro_conc': (('month', 'lat', 'lon'),
                                    find_lowest_valid_concentration(
-                                       ocean_conc['OCS'], 'zid')),
-                    'plant_conc': (('month', 'lat', 'lon'),
-                                   find_lowest_valid_concentration(
-                                       plant_conc['OCS'], 'zid'))},
-        coords = {'lon': (('lon'), lon_geoschem),
-                  'lat': (('lat'), lat_geoschem),
-                  'month': (('month'), range(n_months))})
+                                       anthro_conc['COS'], 'zid')),
+                   'ocean_conc': (('month', 'lat', 'lon'),
+                                  find_lowest_valid_concentration(
+                                      ocean_conc['OCS'], 'zid')),
+                   'plant_conc': (('month', 'lat', 'lon'),
+                                  find_lowest_valid_concentration(
+                                      plant_conc['OCS'], 'zid'))},
+        coords={'lon': (('lon'), lon_geoschem),
+                'lat': (('lat'), lat_geoschem),
+                'month': (('month'), range(n_months))})
+
+    return(OCS_all, anth_lowres, anth_highres, plant_lowres, da_of)
 
 
+def main():
+    (OCS_all, anth_lowres,
+     anth_highres, plant_lowres, da_of) = main_get_all_data()
     return(OCS_all)
+
 
 if __name__ == "__main__":
 
     # todo calculate ocean flux per gridcell per month
     # todo make sure units are consistent
-    OCS_all = main()
+    # OCS_all = main()
+    (OCS_all, anth_lowres, anth_highres,
+     plant_lowres, da_of) = main_get_all_data()
     # mode='w' ensures any existing file will be overwritten
     delete_if_exists('OCS_all.nc')
     OCS_all.to_netcdf('OCS_all.nc', mode='w')

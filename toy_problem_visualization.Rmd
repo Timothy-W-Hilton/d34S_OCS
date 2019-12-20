@@ -4,8 +4,8 @@ jupyter:
     text_representation:
       extension: .Rmd
       format_name: rmarkdown
-      format_version: '1.1'
-      jupytext_version: 1.2.4
+      format_version: '1.2'
+      jupytext_version: 1.3.0
   kernelspec:
     display_name: d34Shv
     language: python
@@ -42,21 +42,41 @@ OCS = TP.main()
 ```
 
 ```{python}
-opts_common = {'coastline': True, 'legend': False}
+opts_common = {'coastline': True, 'legend': False,  'geo':True}
+dims = {'lon': hv.Dimension('lon', label='Longitude', unit='deg E'),
+       'lat':  hv.Dimension('lat', label='Latitude', unit='deg N'),
+       'flux': hv.Dimension('flux', label='fOCS', unit='pmol m-2 s-1'),
+       'conc': hv.Dimension('conc', label='[OCS]', unit='pptv')}
 ```
 
+Launois et al (2015) report ocean production maxing around 7 pmol m-2 s-1, so these values are in the right ballpark.
+
 ```{python}
-qm_focean = OCS['ocean_flux'].hvplot.quadmesh('lon', 'lat', label='ocean fOCS', **opts_common)
-qm_ocean = OCS['ocean_conc'].hvplot.quadmesh('lon', 'lat', label='ocean [OCS]', **opts_common)
+qm_focean = OCS['ocean_flux'].hvplot.quadmesh('lon', 'lat', label='ocean fOCS', clabel='pmol m-2 s-1', **opts_common)
+qm_ocean = OCS['ocean_conc'].hvplot.quadmesh('lon', 'lat', label='ocean [OCS]', clabel='pptv', **opts_common)
 if draw_plots:
     display(qm_focean + qm_ocean)
 ```
 
+Zumkehr et al (2018) shows peak anthropogenic emissiions in the 50 to 100 pmol m-2 s-1 range, so these fluxes are high.
+
 ```{python}
-qm_fanthro = OCS['anthro_flux'].hvplot.quadmesh('lon', 'lat', label='anthro fOCS', **opts_common)
+qm_fanthro = OCS['anthro_flux'].hvplot.quadmesh('lon', 'lat', label='anthro fOCS', clim=(0, 100), **opts_common)
 qm_anthro = OCS['anthro_conc'].hvplot.quadmesh('lon', 'lat', label='anthro [OCS]', **opts_common)
 if draw_plots:
     display(qm_fanthro + qm_anthro)
+```
+
+```{python}
+import numpy as np
+arr = OCS['anthro_flux'].values.copy()
+arr[arr < 5e-1] = np.NaN
+maxval = np.nanmax(arr)
+bins = np.concatenate([np.linspace(0, 100, 100), np.arange(100, 1300, step=100)])
+count, edges = np.histogram(arr, bins)
+hv.Histogram((count, edges))
+# count, edges = np.histogram(arr, np.linspace(0, 1, 100))
+# hv.Histogram((count, edges))
 ```
 
 ```{python}
@@ -64,4 +84,12 @@ qm_fplant = OCS['plant_flux'].hvplot.quadmesh('lon', 'lat', label='plant fOCS', 
 qm_plant = OCS['plant_conc'].hvplot.quadmesh('lon', 'lat', label='plant [OCS]', **opts_common)                                            
 if draw_plots:
     display(qm_fplant + qm_plant)
+```
+
+```{python}
+OCS_all, anth_lowres, anth_highres, plant_lowres, da_of = TP.main_get_all_data()
+```
+
+```{python active="", eval=FALSE}
+plant_lowres.fOCS.min()
 ```
