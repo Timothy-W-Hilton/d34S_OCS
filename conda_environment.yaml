@@ -1,0 +1,47 @@
+name: d34Shv_test2
+channels:
+  - conda-forge
+dependencies:
+  - bokeh
+  - cartopy
+  - datashader
+  - esmpy
+  - fiona
+  - flake8
+  - fortranformat
+  - geopandas
+  - geoviews
+  - gitpython
+  - holoviews
+  - hvplot
+  - ipython
+  - jedi
+  - jupyter
+  - jupyterthemes
+  - jupytext
+  - matplotlib
+  - nbconvert
+  - nco
+  - netcdf-fortran
+  - netcdf4
+  - nose
+  - numba
+  - numpy
+  - pandas
+  - pandoc
+  - pep8
+  - pip
+  - proj4
+  - pyflakes
+  - python=3.7.3
+  - rope
+  - scipy
+  - shapely
+  - xarray
+#  -pip:
+#	/Users/tim/work/Code/TimUtils
+# to install locally via pip:
+# timutils, twhmaptools, idwnn-kdtree-interp
+#
+# to install:
+#     conda env create --file conda_environment.yaml
